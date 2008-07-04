@@ -138,31 +138,52 @@ guide_legend <- function(legend, usage=usage, theme) {
     unit.pmax(unit(1.4, "lines"), vgap + label.heights, grobheight)
   )  
 
-  # Layout the legend table
-  legend.layout <- grid.layout(nkeys + 1, 4, widths = widths, heights = heights, just=c("left","top"))
-  fg <- ggname("legend", frameGrob(layout = legend.layout))
-  fg <- placeGrob(fg, theme_render(theme, "legend.background"))
-
+  # Create text and key grobs
   numeric_labels <- all(sapply(display$label, is.language)) || suppressWarnings(all(!is.na(sapply(display$label, "as.numeric"))))
   hpos <- numeric_labels * 1
 
-  fg <- placeGrob(fg, title, col=1:3, row=1)
-  for (i in 1:nkeys) {
-    df <- as.list(display[i,, drop=FALSE])
-    
-    fg <- placeGrob(fg, theme_render(theme, "legend.key"), col = 1, row = i+1)      
-    for(grob in grobs) {
-      fg <- placeGrob(fg, ggname("key", grob(df)), col = 1, row = i+1)      
-    }
-    label <- theme_render(
+  text <- llply(display$label, function(label) {
+    theme_render(
       theme, "legend.text", 
-      display$label[[i]], hjust = hpos,
-      x = hpos, y = 0.5
+      label, just = c(valign, "centre"),
+      x = vpos, y = 0.5
     )
-    fg <- placeGrob(fg, label, col = 3, row = i+1)
-  }
+  })
+  dim(text) <- c(length(text), 1)
+  
+  bg <- theme_render(theme, "legend.key")
+  keys <- alply(display, 1, function(df) {
+    df <- as.list(df)
+    geoms <- llply(grobs, function(grob) grob(df))
+    do.call("grobTree", c(list(bg), geoms))
+  })
+  dim(keys) <- c(length(keys), 1)
 
-  fg
+  # Create viewports
+  legend.layout <- grid.layout(
+    nkeys + 1, 4, 
+    widths = widths, heights = heights, 
+    just=c("left","top")
+  )
+  browser()
+  layout_vp <- viewport(layout = legend.layout, name = "legend")
+  viewports <- do.call("vpList", c(
+    list(viewport(name = "title", layout.pos.row = 1, layout.pos.col = 1:4)),
+    setup_viewports("key", keys, c(1, 0)),
+    setup_viewports("label", text, c(1, 2))
+  ))
+  viewport <- vpTree(layout_vp, viewports)
+  
+  # Assign grobs to viewports
+  grobs <- c(
+    assign_viewports(list(key = keys, text = text)),
+    list(editGrob(title, vp = "title"))
+  )
+
+  absoluteGrob(gTree(
+    children = do.call("gList", grobs), 
+    childrenvp = viewport
+  ), width = sum(widths), height = sum(heights))
 }
 
 # Compute usage of scales

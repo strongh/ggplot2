@@ -32,7 +32,7 @@ setup_viewports <- function(type, data, offset = c(0,0), clip = "on") {
   cols <- ncol(data)
   
   vp <- function(x,y) {
-    # cat(vp_name(x, y, type), ": ", x + offset[1], ", ", y + offset[2], "\n", sep="")
+    cat(vp_name(x, y, type), ": ", x + offset[1], ", ", y + offset[2], "\n", sep="")
     viewport(
       name = vp_name(x, y, type), 
       layout.pos.row = x + offset[1], 
