@@ -1,5 +1,5 @@
 GeomPolygon <- proto(Geom, {
-  draw <- function(., data, scales, coordinates, ...) {
+  draw <- function(., data, range, coordinates, ...) {
     n <- nrow(data)
     if (n == 1) return()
     

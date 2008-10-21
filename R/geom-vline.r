@@ -2,28 +2,43 @@ GeomVline <- proto(Geom, {
   new <- function(., ...) {
     .super$new(., ..., ignore.extra = TRUE)
   }
+  
+  reparameterise <- function(., df, params) {
+    intercept <- params$intercept
 
-  draw <- function(., data, scales, coordinates, intercept = NULL, ...) {
-    if (is.character(intercept)) intercept <- (match.fun(intercept))(data$x)
-    
-    data <- aesdefaults(data, .$default_aes(), list(...))
     if (is.null(intercept)) {
-      if (is.null(data$intercept)) data$intercept <- 0
+      # Intercept comes from data, default to 0 if not set
+      if (is.null(df$intercept)) df$intercept <- 0
+      
+    } else if (is.numeric(intercept)) {
+      # Intercept is a numeric vector of positions
+      df <- df[rep(1, length(intercept)), ]
+      df$intercept <- intercept
+      
+    } else if (is.character(intercept) || is.function(intercept)) {
+      # Intercept is a function
+      f <- match.fun(intercept)
+      trans <- function(df) transform(df, intercept = f(x))
+      df <- ddply(df, .(group), trans)
     } else {
-      data <- data[rep(1, length(intercept)), ]
-      data$intercept <- intercept
+      stop("Invalid intercept type: should be a numeric vector, a function", 
+           ", or a name of a function", call. = FALSE)
     }
     
-    yrange <- scales$get_scales("y")$output_expand()
-    
-    data <- transform(data,
-      y = yrange[1],
-      yend = yrange[2],
-      x = intercept,
-      xend = intercept
-    )
-    
-    GeomSegment$draw(unique(data), scales, coordinates)
+    unique(within(df, {
+      x <- intercept
+      xend <- intercept
+      y <- NULL
+    }))
+  }
+  
+  draw <- function(., data, intercept = NULL, ...) {
+    data <- within(data, {
+      y <- 0
+      yend <- 1
+    })
+          
+    GeomSegment$draw(data, range)
   }
 
   objname <- "vline"
@@ -65,5 +80,6 @@ GeomVline <- proto(Geom, {
     p <- ggplot(mtcars, aes(x = wt, y=mpg)) + geom_point()
     p + geom_vline(intercept="mean") + facet_grid(. ~ cyl)
     p + geom_vline(aes(colour = factor(cyl)), intercept="mean")
+    p + geom_vline(aes(intercept = wt))
   }  
 })

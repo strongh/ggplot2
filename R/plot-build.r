@@ -44,6 +44,7 @@ ggplot_build <- function(plot) {
     data <- dlapply(function(d, p) p$scales_map(d, npscales))
   }
   facet$position_train(data, scales)
+  # Scales all positions to [0, 1]
   data <- facet$position_map(data, scales)    
 
   # Produce grobs

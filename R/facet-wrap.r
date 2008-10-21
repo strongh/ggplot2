@@ -199,11 +199,11 @@ FacetWrap <- proto(Facet, {
       grobs <- matrix(list(), nrow = nrow(layerd), ncol = ncol(layerd))
 
       for(i in seq_along(.$scales$x)) {
-        scales <- list(
-          x = .$scales$x[[i]], 
-          y = .$scales$y[[i]]
+        range <- list(
+          x = .$scales$x[[i]]$output_expand(), 
+          y = .$scales$y[[i]]$output_expand()
         )
-        grobs[[1, i]] <- layer$make_grob(layerd[[1, i]], scales, cs)
+        grobs[[1, i]] <- layer$make_grob(layerd[[1, i]], range, cs)
       }
       grobs
     })

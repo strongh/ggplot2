@@ -16,7 +16,7 @@ GeomBar <- proto(Geom, {
     )
   }
  
-  draw <- function(., data, scales, coordinates, ...) {
+  draw <- function(., data, range, coordinates, ...) {
     GeomRect$draw(data, scales, coordinates, ...)
   }
   

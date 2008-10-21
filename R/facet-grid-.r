@@ -221,10 +221,14 @@ FacetGrid <- proto(Facet, {
       for(i in seq_len(nrow(layerd))) {
         for(j in seq_len(ncol(layerd))) {
           scales <- list(
-            x = .$scales$x[[j]], 
+            x = .$scales$x[[i]], 
             y = .$scales$y[[i]]
           )
-          grobs[[i, j]] <- layer$make_grob(layerd[[i, j]], scales, cs)
+
+          data <- cs$transform(layerd[[i, j]], scales)
+          range <- cs$output_set(scales)
+          
+          grobs[[i, j]] <- layer$make_grob(data, range)
         }
       }
       grobs

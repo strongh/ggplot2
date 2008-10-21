@@ -3,7 +3,7 @@ Geom <- proto(TopLevel, expr={
 
   parameters <- function(.) {
     params <- formals(get("draw", .))
-    params <- params[setdiff(names(params), c(".","data","scales", "coordinates", "..."))]
+    params <- params[setdiff(names(params), c(".","data","range", "..."))]
     
     required <- rep(NA, length(.$required_aes))
     names(required) <- .$required_aes
@@ -19,10 +19,10 @@ Geom <- proto(TopLevel, expr={
   guide_geom <- function(.) "point"
 
   draw <- function(...) {}
-  draw_groups <- function(., data, scales, coordinates, ...) {
+  draw_groups <- function(., data, range, ...) {
     if (is.null(data) || nrow(data) == 0) return()
     groups <- split(data, factor(data$group))
-    grobs <- lapply(groups, function(group) .$draw(group, scales, coordinates, ...))
+    grobs <- lapply(groups, function(group) .$draw(group, range, ...))
     
     ggname(paste(.$objname, "s", sep=""), gTree(
       children = do.call("gList", grobs)

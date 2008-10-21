@@ -178,24 +178,27 @@ Layer <- proto(expr = {
   }
   
   # Return a matrix of grobTrees, matching dimensions of facets
-  make_grobs <- function(., data, scales, cs) {
+  make_grobs <- function(., data, range) {
     force(data)
-    gg_apply(data, function(x) .$make_grob(x, scales, cs))
+    gg_apply(data, function(x) .$make_grob(x, range))
   }
 
-  make_grob <- function(., data, scales, cs) {
+  make_grob <- function(., data, range) {
     if (is.null(data) || nrow(data) == 0) return(nullGrob())
     data <- .$use_defaults(data)
     
-    check_required_aesthetics(.$geom$required_aes, c(names(data), names(.$geom_params)), paste("geom_", .$geom$objname, sep=""))
+    check_required_aesthetics(
+      .$geom$required_aes, 
+      c(names(data), names(.$geom_params)), 
+      paste("geom_", .$geom$objname, sep="")
+    )
     
     if (is.null(data$order)) data$order <- data$group
     data <- data[order(data$order), ]
     
     do.call(.$geom$draw_groups, c(
       data = list(as.name("data")), 
-      scales = list(as.name("scales")), 
-      coordinates = list(as.name("cs")), 
+      range = list(as.name("range")),
       .$geom_params
     ))
   }

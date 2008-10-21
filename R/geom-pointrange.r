@@ -20,7 +20,7 @@ GeomPointrange <- proto(Geom, {
   guide_geom <- function(.) "pointrange"
   required_aes <- c("x", "y", "ymin", "ymax")
 
-  draw <- function(., data, scales, coordinates, ...) {
+  draw <- function(., data, range, coordinates, ...) {
     if (is.null(data$y)) return(GeomLinerange$draw(data, scales, coordinates, ...))
     ggname(.$my_name(),gTree(children=gList(
       GeomLinerange$draw(transform(data, size = size / 2), scales, coordinates, ...),

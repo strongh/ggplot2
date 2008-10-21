@@ -1,5 +1,5 @@
 GeomSmooth <- proto(Geom, {
-  draw <- function(., data, scales, coordinates, ...) {
+  draw <- function(., data, range, coordinates, ...) {
     data$fill <- alpha(data$fill, data$alpha)
     gList(
       tryNULL(GeomRibbon$draw(transform(data, colour=NA), scales, coordinates)),

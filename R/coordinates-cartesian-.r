@@ -18,6 +18,14 @@ CoordCartesian <- proto(Coord, expr={
     }
   }
   
+  output_set <- function(., scales) {
+    list(
+      x = scales$x$output_expand(), 
+      y = scales$y$output_expand()
+    )
+  }
+  
+  
   # Assumes contiguous series of points
   munch <- function(., data, scales, npieces=1) .$transform(data, scales)
   

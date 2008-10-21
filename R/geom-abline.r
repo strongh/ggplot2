@@ -3,9 +3,8 @@ GeomAbline <- proto(Geom, {
     .super$new(., ..., ignore.extra = TRUE)
   }
   
-  draw <- function(., data, scales, coordinates, intercept = NULL, slope = NULL, ...) {
-    
-    
+  draw <- function(., data, range, intercept = NULL, slope = NULL, ...) {
+  
     data <- aesdefaults(data, .$default_aes(), list(...))
     if (is.null(intercept)) {
       if (is.null(data$intercept)) data$intercept <- 0
@@ -20,17 +19,14 @@ GeomAbline <- proto(Geom, {
       data$slope <- slope
     }
     
-    xrange <- scales$get_scales("x")$output_expand()
-    
-    
     data <- transform(data,
-      x = xrange[1],
-      xend = xrange[2],
-      y = xrange[1] * slope + intercept,
-      yend = xrange[2] * slope + intercept
+      x = range$x[1],
+      xend = range$x[2],
+      y = range$x[1] * slope + intercept,
+      yend = range$x[2] * slope + intercept
     )
     
-    GeomSegment$draw(unique(data), scales, coordinates)
+    GeomSegment$draw(unique(data), range)
   }
 
   # Documentation -----------------------------------------------

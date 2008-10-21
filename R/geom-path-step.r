@@ -10,7 +10,7 @@ GeomStep <- proto(GeomPath, {
   }
   details <- "Equivalent to plot(type='s')."
   
-  draw <- function(., data, scales, coordinates, direction = "hv", ...) {
+  draw <- function(., data, range, coordinates, direction = "hv", ...) {
     data <- stairstep(data, direction)
     GeomPath$draw(data, scales, coordinates, ...)
   }

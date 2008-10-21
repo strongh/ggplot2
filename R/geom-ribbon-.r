@@ -10,7 +10,7 @@ GeomRibbon <- proto(Geom, {
     rectGrob(gp=gpar(col=data$colour, fill=data$fill))
   }
 
-  draw <- function(., data, scales, coordinates, ...) {
+  draw <- function(., data, range, coordinates, ...) {
     data <- data[complete.cases(data[, c("x","ymin","ymax")]), ]
     tb <- with(data,
       coordinates$munch(data.frame(x=c(x, rev(x)), y=c(ymax, rev(ymin))), scales)

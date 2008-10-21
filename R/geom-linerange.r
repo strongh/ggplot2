@@ -15,7 +15,7 @@ GeomLinerange <- proto(Geom, {
   guide_geom <- function(.) "path"
   required_aes <- c("x", "ymin", "ymax")
 
-  draw <- function(., data, scales, coordinates, ...) {
+  draw <- function(., data, range, coordinates, ...) {
     munched <- coordinates$transform(data, scales)
     ggname(.$my_name(), GeomSegment$draw(transform(data, xend=x, y=ymin, yend=ymax), scales, coordinates, ...))
   }
