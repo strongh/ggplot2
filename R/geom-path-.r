@@ -1,7 +1,7 @@
 GeomPath <- proto(Geom, {
   draw_groups <- function(., ...) .$draw(...)
 
-  draw <- function(., data, range, coordinates, ...) {
+  draw <- function(., data, range,  ...) {
     if (nrow(data) < 2) return()
 
     munched <- coordinates$munch(data, scales)

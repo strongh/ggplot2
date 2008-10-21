@@ -3,7 +3,7 @@ GeomHline <- proto(Geom, {
     .super$new(., ..., ignore.extra = TRUE)
   }
 
-  draw <- function(., data, range, coordinates, intercept = NULL, ...) {
+  draw <- function(., data, range,  intercept = NULL, ...) {
     if (is.character(intercept)) intercept <- (match.fun(intercept))(data$y)
     
     data <- aesdefaults(data, .$default_aes(), list(...))

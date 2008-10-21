@@ -31,7 +31,7 @@ GeomCrossbar <- proto(Geom, {
   required_aes <- c("x", "y", "ymin", "ymax")
   guide_geom <- function(.) "path"
   
-  draw <- function(., data, range, coordinates, fatten = 2, width = NULL, ...) {
+  draw <- function(., data, range,  fatten = 2, width = NULL, ...) {
     ggname(.$my_name(), gTree(children=gList(
       GeomRect$draw(data, scales, coordinates, ...),
       GeomRect$draw(transform(data, ymin=y, ymax=y, size = size * fatten), scales, coordinates, ...)

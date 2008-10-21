@@ -6,7 +6,7 @@ GeomBar <- proto(Geom, {
   
   required_aes <- c("x")
  
-  reparameterise <- function(., df, params) {
+  reparameterise <- function(., df, params, munched) {
     df$width <- df$width %||% 
       params$width %||% (resolution(df$x, FALSE) * 0.9)
     
@@ -16,8 +16,8 @@ GeomBar <- proto(Geom, {
     )
   }
  
-  draw <- function(., data, range, coordinates, ...) {
-    GeomRect$draw(data, scales, coordinates, ...)
+  draw <- function(., ...) {
+    GeomRect$draw(...)
   }
   
   # Documentation -----------------------------------------------

@@ -15,9 +15,13 @@ GeomLinerange <- proto(Geom, {
   guide_geom <- function(.) "path"
   required_aes <- c("x", "ymin", "ymax")
 
-  draw <- function(., data, range, coordinates, ...) {
-    munched <- coordinates$transform(data, scales)
-    ggname(.$my_name(), GeomSegment$draw(transform(data, xend=x, y=ymin, yend=ymax), scales, coordinates, ...))
+
+  reparameterise <- function(., data, params, munched) {
+    data <- transform(data, xend = x, y = ymin, yend = ymax)
+    GeomSegment$reparameterise_munch(data, params, munched)
+  }
+  draw <- function(., data, range, munched, ...) {
+    ggname(.$my_name(), GeomSegment$draw(data, range, munched, ...))
   }
 
   icon <- function(.) segmentsGrob(c(0.3, 0.7), c(0.1, 0.2), c(0.3, 0.7), c(0.7, 0.95))

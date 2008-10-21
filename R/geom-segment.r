@@ -1,22 +1,27 @@
 GeomSegment <- proto(Geom, {
   draw <- function(., data, range, arrow=NULL, ...) {
-    # if (!coordinates$muncher()) {
-      return(with(data, 
+    if (munched) {
+      grobs <- GeomPath$draw_groups(data, range, ...)
+    } else {
+      grobs <- with(data, 
         segmentsGrob(x, y, xend, yend, default.units="native",
         gp=gpar(col=colour, lwd=size * .pt, lty=linetype), arrow = arrow)
-      ))
-    # }
+      ))      
+    }
 
-    # data$group <- 1:nrow(data)
-    # starts <- subset(data, select = c(-xend, -yend))
-    # ends <- rename(subset(data, select = c(-x, -y)), c("xend" = "x", "yend" = "y"))
-    # 
-    # pieces <- rbind(starts, ends)
-    # pieces <- pieces[order(pieces$group),]
-    # 
-    # GeomPath$draw_groups(pieces, scales, coordinates, ...)
+    ggname(.$my_name(), grobs)
   }
+  
+  reparameterise <- function(., data, params, munched) {
+    if (!munched) return(data)
 
+    # Convert to lines
+    data$group <- 1:nrow(data)
+    starts <- subset(data, select = c(-xend, -yend))
+    ends <- rename(subset(data, select = c(-x, -y)), c("xend" = "x", "yend" = "y"))
+
+    rweave(starts, ends)      
+  }
   
   objname <- "segment"
   desc <- "Single line segments"

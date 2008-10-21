@@ -31,7 +31,7 @@ GeomErrorbar <- proto(Geom, {
     "geom_smooth" = "for continuous analog"
   )
 
-  draw <- function(., data, range, coordinates, width = NULL, ...) {
+  draw <- function(., data, range,  width = NULL, ...) {
     GeomPath$draw(with(data, data.frame( 
       x = as.vector(rbind(xmin, xmax, x,    x,    xmin, xmax)), 
       y = as.vector(rbind(ymax, ymax, ymax, ymin, ymin, ymin)),

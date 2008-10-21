@@ -1,5 +1,5 @@
 GeomRug <- proto(Geom, {
-  draw <- function(., data, range, coordinates, ...) {  
+  draw <- function(., data, range,  ...) {  
     rugs <- list()
     data <- coordinates$transform(data, scales)    
     if (!is.null(data$x)) {

@@ -1,8 +1,8 @@
 GeomHex <- proto(Geom, {
   objname <- "hex"
 
-  draw <- function(., data, range, coordinates, ...) { 
-    with(coordinates$transform(data, scales), 
+  draw <- function(., data, range,  ...) { 
+    with(data, 
       ggname(.$my_name(), hexGrob(x, y, col=colour, fill = fill))
     )
   }

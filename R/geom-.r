@@ -19,6 +19,7 @@ Geom <- proto(TopLevel, expr={
   guide_geom <- function(.) "point"
 
   draw <- function(...) {}
+  
   draw_groups <- function(., data, range, ...) {
     if (is.null(data) || nrow(data) == 0) return()
     groups <- split(data, factor(data$group))
@@ -38,10 +39,7 @@ Geom <- proto(TopLevel, expr={
     if (newline) cat("\n")
   }
   
-  reparameterise <- function(., data, params) data
-  
-  # Html documentation ----------------------------------
-
+  reparameterise <- function(., data, params, munched) data
     
   
 })

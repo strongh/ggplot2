@@ -32,13 +32,13 @@ GeomVline <- proto(Geom, {
     }))
   }
   
-  draw <- function(., data, intercept = NULL, ...) {
+  draw <- function(., data, intercept = NULL, munched, ...) {
     data <- within(data, {
       y <- 0
       yend <- 1
     })
           
-    GeomSegment$draw(data, range)
+    GeomSegment$draw(data, range, munched)
   }
 
   objname <- "vline"

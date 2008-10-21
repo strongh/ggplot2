@@ -1,6 +1,6 @@
 GeomBoxplot <- proto(Geom, {
   
-  reparameterise <- function(., df, params) {
+  reparameterise <- function(., df, params, munched) {
     df$width <- df$width %||% 
       params$width %||% (resolution(df$x, FALSE) * 0.9)
 
