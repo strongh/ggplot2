@@ -36,13 +36,6 @@ cunion <- function(a, b) {
   both[, c(names(b), setdiff(names(a), names(b)))]
 }
 
-cbind.drop <- function(...) {
-  pieces <- list(...)
-  pieces <- pieces[sapply(pieces, length) > 0]
-  
-  do.call("cbind", pieces)
-}
-
 # Col weave
 # Weave together two (or more) matrices by column
 # 
