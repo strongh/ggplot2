@@ -45,10 +45,22 @@ FacetGrid <- proto(Facet, {
   train <- function(., data) {    
     all <- c(.$rows, .$cols)
     
-    levels <- unique(ldply(data, function(x) {
-      as.data.frame(compact(eval.quoted(all, x, emptyenv(), try = TRUE)))
-    }))
-
+    # Here we need to build up a complete list of all variables used for 
+    # facetting in different layers, ideally in such a way that we don't
+    # create combinations that don't exist somewhere in the raw data. The
+    # complication is that some layers might not have all facetting variables,
+    # so this goal might not be achievable (and the code currently doesn't
+    # manage to do that, instead including all combinations)
+        
+    # Get all possible values
+    layers <- lapply(data, eval.quoted, expr = all, emptyenv(), try = TRUE)
+    # Rearrange so instead of variables nested inside layers,
+    # have layers nested inside lists    
+    vars <- lapply(names(all), function(var) lapply(layers, "[[", var))
+    vars <- lapply(vars, function(x) unique(concat(x)))
+    names(vars) <- names(all)
+    
+    levels <- do.call("expand.grid", vars)  
     levels[] <- lapply(levels, as.factor)
 
     # Add margins
@@ -79,7 +91,7 @@ FacetGrid <- proto(Facet, {
     if (nrow(levels) == 0) {
       .$panel_info <- data.frame(PANEL = 1, ROW = 1, COL = 1, 
         SCALE_X = 1, SCALE_Y = 1)
-      return()  
+      return()
     }
     
     row_vals <- as.data.frame(eval.quoted(.$rows, levels, emptyenv()))      
