@@ -8,7 +8,7 @@ FacetWrap <- proto(Facet, {
     
     .$proto(
       facets = as.quoted(facets), free = free, 
-      scales = NULL, as.table = as.table, drop = drop,
+      as.table = as.table, drop = drop,
       ncol = ncol, nrow = nrow
     )
   }

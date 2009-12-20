@@ -1,6 +1,6 @@
 FacetNull <- proto(Facet, {
   new <- function(.) {    
-    .$proto(scales = NULL)
+    .$proto()
   }
 
   # The null facetter has a single panel.

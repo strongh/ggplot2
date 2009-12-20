@@ -29,7 +29,7 @@ FacetGrid <- proto(Facet, {
     .$proto(
       rows = rows, cols = cols, margins = margins,
       free = free, space_is_free = (space == "free"),
-      scales = NULL, labeller = list(labeller), as.table = as.table
+      labeller = list(labeller), as.table = as.table
     )
   }
   
