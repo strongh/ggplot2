@@ -246,7 +246,7 @@ FacetGrid <- proto(Facet, {
   }
 
   # Create grobs for each component of the panel guides
-  add_guides <- function(., data, panels_grob, coord, theme) {
+  add_guides <- function(., panels_grob, coord, theme) {
 
     aspect_ratio <- theme$aspect.ratio
     

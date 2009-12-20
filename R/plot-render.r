@@ -8,7 +8,8 @@
 panelGrob <- function(plot, pieces = ggplot_build(plot)) {
   theme <- plot_theme(plot)
 
-  grid <- pieces$facet$add_guides(plot$data, pieces$panels, pieces$cs, theme)
+  add_guides <- pieces$facet$add_guides
+  grid <- add_guides(pieces$panels, pieces$cs, theme)
   gTree.grobGrid(grid)
 }
 
@@ -215,11 +216,13 @@ surround_viewports <- function(position, widths, heights, legend_vp) {
 print.ggplot <- function(x, newpage = is.null(vp), vp = NULL, ...) {
   set_last_plot(x)
   if (newpage) grid.newpage()
+  
+  plot_grob <- ggplotGrob(x, ...)
   if (is.null(vp)) {
-    grid.draw(ggplotGrob(x, ...)) 
+    grid.draw(plot_grob) 
   } else {
     if (is.character(vp)) seekViewport(vp) else pushViewport(vp)
-    grid.draw(ggplotGrob(x, ...)) 
+    grid.draw(plot_grob) 
     upViewport()
   }
 }
