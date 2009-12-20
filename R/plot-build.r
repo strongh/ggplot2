@@ -13,24 +13,27 @@ ggplot_build <- function(plot) {
   # Apply function to layer and matching data
   dlapply <- function(f) mlply(cbind(d = data, p = layers), f)
 
-  # Evaluate aesthetics
-  data <- lapply(layers, function(x) x$make_aesthetics(plot))
+
+  # Facet - adding extra data for margins & missing facetting variables,
+  # and adding on a PANEL variable
+  layer_data <- lapply(layers, function(y) y$data)
+  facet$train(c(list(plot$data), layer_data))
+  data <- facet$map(layer_data, plot$data)
   
-  # Facet
-  facet$initialise(data)
-  data <- facet$stamp_data(data)
+  # Compute aesthetics to produce data with generalised variable names
+  data <- dlapply(function(d, p) p$compute_aesthetics(d, plot))
   
   # Transform all scales
-  data <- dlapply(function(d, p) p$scales_transform(d, scales))
+  data <- lapply(data, scales$transform_df)
   
   # Map and train positions so that statistics have access to ranges
   # and all positions are numeric
   facet$position_train(data, scales)
-  data <- facet$position_map(data, scales)
+  data <- facet$position_map(data)
   
   # Apply and map statistics, then reparameterise geoms that need it
-  data <- facet$calc_statistics(data, layers)
-  data <- dlapply(function(d, p) p$map_statistics(d, plot)) 
+  data <- dlapply(function(d, p) facet$calc_statistics(d, p)) 
+  data <- dlapply(function(d, p) p$map_statistic(d, plot)) 
   data <- dlapply(function(d, p) p$reparameterise(d))
 
   # Adjust position
@@ -40,17 +43,17 @@ ggplot_build <- function(plot) {
   
   # Train and map, for final time
   if (npscales$n() > 0) {
-    dlapply(function(d, p) p$scales_train(d, npscales))
-    data <- dlapply(function(d, p) p$scales_map(d, npscales))
+    lapply(data, npscales$train_df)
+    data <- lapply(data, npscales$map_df)
   }
   facet$position_train(data, scales)
-  data <- facet$position_map(data, scales)    
+  data <- facet$position_map(data)
 
   # Produce grobs
-  grobs <- facet$make_grobs(data, layers, cs)
+  grobs <- dlapply(function(d, p) facet$make_grobs(d, p, cs)) 
   
-  grobs3d <- array(unlist(grobs, recursive=FALSE), c(dim(data[[1]]), length(data)))
-  panels <- aaply(grobs3d, 1:2, splat(grobTree), .drop = FALSE)
+  grobs3d <- matrix(unlist(grobs, recursive=FALSE), ncol = length(layers))
+  panels <- aaply(grobs3d, 1, splat(grobTree), .drop = FALSE)
   
   list(
     data = data,

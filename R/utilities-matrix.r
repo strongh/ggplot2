@@ -32,7 +32,15 @@ cunion <- function(a, b) {
   if (length(a) == 0) return(b)
   if (length(b) == 0) return(a)
   
-  cbind(a, b[setdiff(names(b), names(a))])
+  both <- cbind(a, b[setdiff(names(b), names(a))])
+  both[, c(names(b), setdiff(names(a), names(b)))]
+}
+
+cbind.drop <- function(...) {
+  pieces <- list(...)
+  pieces <- pieces[sapply(pieces, length) > 0]
+  
+  do.call("cbind", pieces)
 }
 
 # Col weave

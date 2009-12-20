@@ -7,7 +7,7 @@
 #X p <- qplot(wt, mpg, data = mtcars)
 #X p + facet_grid(~ cyl)
 #X p + facet_grid(~ cyl, labeller = label_value)
-label_value <- function(variable, value) value
+label_value <- function(variable, value) paste(value)
 
 # Label facets with value and variable
 # Join together facet value and the name of the variable to create a label.
@@ -63,7 +63,7 @@ label_bquote <- function(expr = beta ^ .(x)) {
 # @arguments orientation, horizontal or vertical
 # @keyword hplot 
 # @keyword internal
-ggstrip <- function(text, horizontal=TRUE, theme) {
+ggstrip <- function(text, horizontal = TRUE, theme) {
   text_theme <- if (horizontal) "strip.text.x" else "strip.text.y"
   if (is.list(text)) text <- text[[1]]
 

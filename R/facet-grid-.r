@@ -7,40 +7,244 @@ FacetGrid <- proto(Facet, {
     )
     space <- match.arg(space, c("fixed", "free"))
     
-    if (is.formula(facets)) facets <- deparse(facets) 
+    # Facets can either be a formula, a string, or a list of things to be
+    # convert to quoted
+    if (is.character(facets)) {
+      facets <- as.formula(facets)
+    }
+    if (is.formula(facets)) {
+      rows <- as.quoted.formula(facets[[2]])
+      rows <- rows[!sapply(rows, identical, as.name("."))]
+      cols <- as.quoted.formula(facets[[3]])
+      cols <- cols[!sapply(cols, identical, as.name("."))]
+    }
+    if (is.list(facets)) {
+      rows <- as.quoted(facets[[1]])
+      cols <- as.quoted(facets[[2]])
+    }
+    
     .$proto(
-      facets = facets, margins = margins,
+      rows = rows, cols = cols, margins = margins,
       free = free, space_is_free = (space == "free"),
       scales = NULL, labeller = list(labeller), as.table = as.table
     )
   }
   
   conditionals <- function(.) {
-    vars <- all.vars(as.formula(.$facets))
-    setdiff(vars, c(".", "..."))
+    c(names(.$rows), names(.$cols))
   }
-  
-  
-  # Initialisation  
-  initialise <- function(., data) {
-    .$facet_levels <- unique(
-      ldply(data, failwith(NULL, "[", quiet = TRUE), .$conditionals()))
     
-    .$shape <- stamp(.$facet_levels, .$facets, margins = .$margins,
-      function(x) 0)
+  # Train facetter with data from plot and all layers.  
+  # 
+  # This creates the panel_info data frame which maps from data values to
+  # panel coordinates: ROW, COL and PANEL. It also records the panels that
+  # contribute to each x and y scale.
+  # 
+  # @param data a list of data frames (one for the plot and one for each
+  #   layer)
+  train <- function(., data) {    
+    all <- c(.$rows, .$cols)
+    
+    levels <- unique(ldply(data, function(x) {
+      as.data.frame(compact(eval.quoted(all, x, emptyenv(), try = TRUE)))
+    }))
+
+    levels[] <- lapply(levels, as.factor)
+
+    # Add margins
+    margins <- .$margins
+    if (is.logical(margins)) {
+      if (margins) {
+        margins <- c(names(all), "grand_row", "grand_col")
+      } else {
+        margins <- c()
+      }
+    }
+    margin_vals <- margin.vars(list(names(.$rows), names(.$cols)), margins)
+    
+    if (length(margin_vals) > 0) {
+      all_marg <- as.data.frame(rep(list("(all)"), ncol(levels)))
+      names(all_marg) <- names(levels)
+
+      levels <- rbind(levels, ldply(margin_vals, function(var) {
+        cunion(unique(levels[var]), all_marg)
+      }))      
+    }
+    
+    # Create row & column variables.
+    # 
+    # What should happen when there is only one row or one column?
+    # (. ~ ., . ~ *, * ~ .)  How will the training work? How will the mapping
+    # work? 
+    if (nrow(levels) == 0) {
+      .$panel_info <- data.frame(PANEL = 1, ROW = 1, COL = 1, 
+        SCALE_X = 1, SCALE_Y = 1)
+      return()  
+    }
+    
+    row_vals <- as.data.frame(eval.quoted(.$rows, levels, emptyenv()))      
+    col_vals <- as.data.frame(eval.quoted(.$cols, levels, emptyenv()))    
+        
+    # Ensure all combinations are present
+    all <- expand.grid.df(row_vals, col_vals)
+    row_vals <- all[names(row_vals)]
+    col_vals <- all[names(col_vals)]
+    
+    panel <- ninteraction(all)
+    panel <- factor(panel, levels = seq_len(attr(panel, "n")))
+    
+    row <- ninteraction(row_vals)
+    if (length(row) == 0) row <- 1
+    col <- ninteraction(col_vals)
+    if (length(col) == 0) col <- 1
+    
+    panels <- cbind.drop(
+      PANEL = panel,
+      ROW = row,
+      COL = col,
+      SCALE_X = 1,
+      SCALE_Y = 1,
+      row_vals,
+      col_vals
+    )
+    panels <- unrowname(panels[order(panels$PANEL), ])
+    
+    # Relax constraints, if necessary
+    if (.$free$x) df$SCALE_X <- panels$ROW
+    if (.$free$y) df$SCALE_Y <- panels$COL
+    
+    .$panel_info <- panels
   }
 
+  # Data is mapped after training to ensure that all layers have extra
+  # copies of data for margins and missing facetting variables, and 
+  # has a PANEL variable that tells which panel it belongs to.
+  # 
+  # @param data a list of data frames (one for each layer)  
+  map <- function(., layer_data, plot_data) {
+    lapply(layer_data, function(data) {
+      if (empty(data)) data <- plot_data
+      .$map_layer(data)
+    })
+  }
+
+  map_layer <- function(., data) {
+    # Add extra data for margins
+        
+    # Compute facetting variables
+    all <- c(.$rows, .$cols)
+    facet_vals <- as.data.frame(compact(
+      eval.quoted(all, data, emptyenv(), try = TRUE)))
+          
+    # If any facetting variables are missing, add them in by 
+    # duplicating the data
+    missing_facets <- setdiff(names(all), names(facet_vals))
+    if (length(missing_facets) > 0) {
+      to_add <- unique(.$panel_info[missing_facets])
+      
+      data_rep <- rep.int(1:nrow(data), nrow(to_add))
+      facet_rep <- rep(1:nrow(to_add), each = nrow(data))
+
+      data <- data[data_rep, ]
+      facet_vals <- cbind(
+        facet_vals[data_rep, ,  drop = FALSE], 
+        to_add[facet_rep, , drop = FALSE])
+    }
+    
+    # Add PANEL variable
+    if (nrow(facet_vals) == 0) {
+      # Special case of no facetting
+      data$PANEL <- 1
+    } else {
+      facet_vals[] <- lapply(facet_vals[], as.factor)
+      keys <- join.keys(facet_vals, .$panel_info, by = .$conditionals())
+
+      data$PANEL <- .$panel_info$PANEL[match(keys$x, keys$y)]      
+    }
+    
+    data
+  }
+    
+  # Position scales ----------------------------------------------------------
   
-  stamp_data <- function(., data) {
-    data <- add_missing_levels(data, .$facet_levels)
-    data <- lapply(data, function(df) {
-      if (empty(df)) return(force_matrix(data.frame()))
-      df <- stamp(add_group(df), .$facets, force, 
-        margins=.$margins, fill = list(data.frame()), add.missing = TRUE)
-      force_matrix(df)
+  position_train <- function(., data, scales) {
+    x_scales <- unique(.$panel_info$SCALE_X)
+    y_scales <- unique(.$panel_info$SCALE_Y)
+    
+    # Initialise scales if needed and if available
+    if (is.null(.$scales$x) && scales$has_scale("x")) {
+      .$scales$x <- scales_list(scales$get_scales("x"), length(x_scales))
+    }
+    if (is.null(.$scales$y) && scales$has_scale("y")) {
+      .$scales$y <- scales_list(scales$get_scales("y"), length(y_scales))
+    }
+    
+    # For each layer of data
+    l_ply(data, function(l) .$position_train_layer(l))
+  }
+  
+  position_train_layer <- function(., data) {
+    scale_x <- .$panel_info$SCALE_X[match(data$PANEL, .$panel_info$PANEL)]
+    scale_y <- .$panel_info$SCALE_Y[match(data$PANEL, .$panel_info$PANEL)]
+    
+    l_ply(unique(scale_x), function(i) {
+      raw <- data[scale_x == i, , ]
+      .$scales$x[[i]]$train_df(raw, drop = .$free$x)
+    })
+    
+    l_ply(unique(scale_y), function(i) {
+      raw <- data[scale_y == i, , ]
+      .$scales$y[[i]]$train_df(raw, drop = .$free$x)
     })
   }
   
+  position_map <- function(., layer_data) {
+    lapply(layer_data, function(data) .$position_map_layer(data))
+  }
+  
+  position_map_layer <- function(., data) {
+    scale_x <- .$panel_info$SCALE_X[match(data$PANEL, .$panel_info$PANEL)]
+    scale_y <- .$panel_info$SCALE_Y[match(data$PANEL, .$panel_info$PANEL)]
+    
+    data <- ldply(unique(scale_x), function(i) {
+      old <- data[scale_x == i, , ]
+      new <- .$scales$x[[i]]$map_df(old)
+      cunion(new, old)
+    })
+
+    data <- ldply(unique(scale_y), function(i) {
+      old <- data[scale_y == i, , ]
+      new <- .$scales$y[[i]]$map_df(old)
+      cunion(new, old)
+    })
+    
+    data
+  }
+  
+  calc_statistics <- function(., data, layer) {
+    ddply(data, "PANEL", function(panel_data) {
+      scales <- .$panel_scales(data$PANEL[1])
+      
+      layer$calc_statistic(panel_data, scales)
+    })
+  }
+  
+  make_grobs <- function(., data, layer, coord) {
+    dlply(data, "PANEL", .drop = FALSE, function(panel_data) {
+      scales <- .$panel_scales(data$PANEL[1])
+      
+      details <- coord$compute_ranges(scales)
+      layer$make_grob(panel_data, details, coord)
+    })
+  }
+  
+  panel_scales <- function(., panel) {
+    scale_x <- .$scales$x[[subset(.$panel_info, PANEL == panel)$SCALE_X]]
+    scale_y <- .$scales$y[[subset(.$panel_info, PANEL == panel)$SCALE_Y]]
+    
+    list(x = scale_x, y = scale_y)
+  }
+
   # Create grobs for each component of the panel guides
   add_guides <- function(., data, panels_grob, coord, theme) {
 
@@ -49,9 +253,7 @@ FacetGrid <- proto(Facet, {
     # If user hasn't set aspect ratio, and we have fixed scales, then
     # ask the coordinate system if it wants to specify one
     if (is.null(aspect_ratio) && !.$free$x && !.$free$y) {
-      xscale <- .$scales$x[[1]]
-      yscale <- .$scales$y[[1]]
-      ranges <- coord$compute_ranges(list(x = xscale, y = yscale))
+      ranges <- coord$compute_ranges(.$panel_scales(1))
       aspect_ratio <- coord$compute_aspect(ranges)
     }
     
@@ -62,40 +264,27 @@ FacetGrid <- proto(Facet, {
       respect <- TRUE
     }
 
-    nr <- nrow(panels_grob)
-    nc <- ncol(panels_grob)
+    panels <- .$panel_info$PANEL
+    cols <- which(.$panel_info$ROW == 1)
+    rows <- which(.$panel_info$COL == 1)
     
-    coord_details <- matrix(list(), nrow = nr, ncol = nc)
-    for (i in seq_len(nr)) {
-      for(j in seq_len(nc)) {
-        scales <- list(
-          x = .$scales$x[[j]]$clone(), 
-          y = .$scales$y[[i]]$clone()
-        )        
-        coord_details[[i, j]] <- coord$compute_ranges(scales)
-      }
-    }
+    coord_details <- llply(panels, function(i) {
+      coord$compute_ranges(.$panel_scales(i))
+    })
     
     # Horizontal axes
-    axes_h <- list()
-    for(i in seq_along(.$scales$x)) {
-      axes_h[[i]] <- coord$guide_axis_h(coord_details[[1, i]], theme)
-    }
+    axes_h <- lapply(coord_details[cols], coord$guide_axis_h, theme)
     axes_h_height <- do.call("max2", llply(axes_h, grobHeight))
     axeshGrid <- grobGrid(
-      "axis_h", axes_h, nrow = 1, ncol = nc,
+      "axis_h", axes_h, nrow = 1, ncol = length(cols),
       heights = axes_h_height, clip = "off"
     )
     
-    
     # Vertical axes
-    axes_v <- list()
-    for(i in seq_along(.$scales$y)) {
-      axes_v[[i]] <- coord$guide_axis_v(coord_details[[i, 1]], theme)
-    }    
+    axes_v <- lapply(coord_details[rows], coord$guide_axis_v, theme)
     axes_v_width <- do.call("max2", llply(axes_v, grobWidth))
     axesvGrid <- grobGrid(
-      "axis_v", axes_v, nrow = nr, ncol = 1,
+      "axis_v", axes_v, nrow = length(rows), ncol = 1,
       widths = axes_v_width, as.table = .$as.table, clip = "off"
     )
     
@@ -117,17 +306,14 @@ FacetGrid <- proto(Facet, {
       "strip_h", labels$h, nrow = nrow(labels$h), ncol = ncol(labels$h),
       heights = strip_heights
     )
-      
+    
     # Add background and foreground to panels
-    panels <- matrix(list(), nrow=nr, ncol = nc)
-    for(i in seq_len(nr)) {
-      for(j in seq_len(nc)) {
-        fg <- coord$guide_foreground(coord_details[[i, j]], theme)
-        bg <- coord$guide_background(coord_details[[i, j]], theme)
-
-        panels[[i,j]] <- grobTree(bg, panels_grob[[i, j]], fg)
-      }
-    }
+    panels_grob <- lapply(panels, function(i) {
+      fg <- coord$guide_foreground(c, theme)
+      bg <- coord$guide_background(coord_details[[i]], theme)
+      grobTree(bg, panels_grob[[i]], fg)      
+    })
+    dim(panels_grob) <- c(length(rows), length(cols))
 
     if(.$space_is_free) {
       size <- function(y) unit(diff(y$output_expand()), "null")
@@ -139,7 +325,7 @@ FacetGrid <- proto(Facet, {
     }
 
     panelGrid <- grobGrid(
-      "panel", t(panels), ncol = nc, nrow = nr,
+      "panel", t(panels_grob), ncol = length(cols), nrow = length(rows),
       widths = panel_widths, heights = panel_heights, as.table = .$as.table,
       respect = respect
     )
@@ -160,7 +346,7 @@ FacetGrid <- proto(Facet, {
     # from left to right
     hgap_widths <- do.call("unit.c", compact(list(
       unit(0, "cm"), # no gap after axis
-      rep.unit2(theme$panel.margin, nc - 1), # gap after all panels except last
+      rep.unit2(theme$panel.margin, length(cols) - 1), # gap after all panels except last
       unit(rep(0, ncol(stripvGrid) + 1), "cm") # no gap after strips 
     )))
     hgap <- grobGrid("hgap", 
@@ -171,7 +357,7 @@ FacetGrid <- proto(Facet, {
     # from top to bottom
     vgap_heights <- do.call("unit.c", compact(list(
       unit(rep(0, nrow(striphGrid) + 1), "cm"), # no gap after strips 
-      rep.unit2(theme$panel.margin, nr - 1), # gap after all panels except last
+      rep.unit2(theme$panel.margin, length(rows) - 1), # gap after all panels except last
       unit(0, "cm") # no gap after axis
     )))
     
@@ -185,105 +371,32 @@ FacetGrid <- proto(Facet, {
 
 
   labels_default <- function(., gm, theme) {
-    labeller <- match.fun(.$labeller[[1]])
-    add.names <- function(x) {
-      for(i in 1:ncol(x)) x[[i]] <- labeller(colnames(x)[i], x[,i])
-      x
-    }
-
-    row.labels <- add.names(rrownames(gm))
-    col.labels <- add.names(rcolnames(gm))
-
-    strip_h <- apply(col.labels, c(2,1), ggstrip, theme = theme)
-    if (nrow(strip_h) == 1 && ncol(strip_h) == 1) strip_h <- matrix(list(zeroGrob()))
-    strip_v <- apply(row.labels, c(1,2), ggstrip, horizontal=FALSE, theme=theme)
-    if (nrow(strip_v) == 1 && ncol(strip_v) == 1) strip_v <- matrix(list(zeroGrob()))
+    col_vars <- ddply(.$panel_info, "COL", uniquecols)
+    row_vars <- ddply(.$panel_info, "ROW", uniquecols)
 
     list(
-      h = strip_h, 
-      v = strip_v
+      h = t(.$make_labels(col_vars, theme)), 
+      v = .$make_labels(row_vars, theme, horizontal = FALSE)
     )
   }
   
-  # Position scales ----------------------------------------------------------
+  make_labels <- function(., label_df, theme, ...) {
+    labeller <- match.fun(.$labeller[[1]])
+    
+    label_df <- label_df[setdiff(names(label_df), 
+      c("PANEL", "COL", "ROW", "SCALE_X", "SCALE_Y"))]
   
-  position_train <- function(., data, scales) {
-    if (is.null(.$scales$x) && scales$has_scale("x")) {
-      .$scales$x <- scales_list(
-        scales$get_scales("x"), ncol(.$shape), .$free$x)
-    }
-    if (is.null(.$scales$y) && scales$has_scale("y")) {
-      .$scales$y <- scales_list(
-        scales$get_scales("y"), nrow(.$shape), .$free$y)
+    labels <- matrix(list(), nrow = nrow(label_df), ncol = ncol(label_df))
+    for (i in seq_len(ncol(label_df))) {
+      labels[, i] <- labeller(names(label_df)[i], label_df[, i])
     }
     
-    lapply(data, function(l) {
-      for(i in seq_along(.$scales$x)) {
-        lapply(l[, i], .$scales$x[[i]]$train_df, drop = .$free$x)
-      }
-      for(i in seq_along(.$scales$y)) {
-        lapply(l[i, ], .$scales$y[[i]]$train_df, drop = .$free$y)
-      }
-    })
-  }
-  
-  position_map <- function(., data, scales) {
-    lapply(data, function(l) {
-      for(i in seq_along(.$scales$x)) {
-        l[, i] <- lapply(l[, i], function(old) {
-          if (is.null(old)) return(data.frame())
-          new <- .$scales$x[[i]]$map_df(old)
-          cbind(new, old[setdiff(names(old), names(new))])
-        }) 
-      }
-      for(i in seq_along(.$scales$y)) {
-        l[i, ] <- lapply(l[i, ], function(old) {
-          if (is.null(old)) return(data.frame())
-          new <- .$scales$y[[i]]$map_df(old)
-          cbind(new, old[setdiff(names(old), names(new))])
-        }) 
-      }
-      l
-    })
-  }
-  
-  make_grobs <- function(., data, layers, coord) {
-    lapply(seq_along(data), function(i) {
-      layer <- layers[[i]]
-      layerd <- data[[i]]
-      grobs <- matrix(list(), nrow = nrow(layerd), ncol = ncol(layerd))
-
-      for(i in seq_len(nrow(layerd))) {
-        for(j in seq_len(ncol(layerd))) {
-          scales <- list(
-            x = .$scales$x[[j]]$clone(), 
-            y = .$scales$y[[i]]$clone()
-          )
-          details <- coord$compute_ranges(scales)
-          grobs[[i, j]] <- layer$make_grob(layerd[[i, j]], details, coord)
-        }
-      }
-      grobs
-    })
-  }
-  
-  calc_statistics <- function(., data, layers) {
-    lapply(seq_along(data), function(i) {
-      layer <- layers[[i]]
-      layerd <- data[[i]]
-      grobs <- matrix(list(), nrow = nrow(layerd), ncol = ncol(layerd))
-
-      for(i in seq_len(nrow(layerd))) {
-        for(j in seq_len(ncol(layerd))) {
-          scales <- list(
-            x = .$scales$x[[j]], 
-            y = .$scales$y[[i]]
-          )
-          grobs[[i, j]] <- layer$calc_statistic(layerd[[i, j]], scales)
-        }
-      }
-      grobs
-    })
+    if (nrow(label_df) == 1) {
+      grobs <- matrix(list(zeroGrob()))
+    } else {
+      grobs <- apply(labels, c(1,2), ggstrip, theme = theme, ...)
+    }
+    grobs
   }
 
   # Documentation ------------------------------------------------------------
@@ -396,7 +509,7 @@ FacetGrid <- proto(Facet, {
 # @arguments number of scales to produce in output
 # @arguments should the scales be free (TRUE) or fixed (FALSE)
 # @keywords internal
-scales_list <- function(scale, n, free) {
+scales_list <- function(scale, n, free = TRUE) {
   if (free) {
     rlply(n, scale$clone())  
   } else {
