@@ -16,7 +16,6 @@ plot_data <- function(plot) {
 base <- qplot(mpg, wt, data = mtcars, colour = cyl)
 
 base
-base + facet_grid(. ~ .)
 base + facet_grid(cyl ~ .)
 base + facet_grid(. ~ cyl)
 base + facet_grid(vs ~ am)

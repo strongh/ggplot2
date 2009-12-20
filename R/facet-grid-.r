@@ -1,5 +1,5 @@
 FacetGrid <- proto(Facet, {
-  new <- function(., facets = . ~ ., margins = FALSE, scales = "fixed", space = "fixed", labeller = "label_value", as.table = TRUE) {
+  new <- function(., facets, margins = FALSE, scales = "fixed", space = "fixed", labeller = "label_value", as.table = TRUE) {
     scales <- match.arg(scales, c("fixed", "free_x", "free_y", "free"))
     free <- list(
       x = any(scales %in% c("free_x", "free")),
@@ -21,6 +21,9 @@ FacetGrid <- proto(Facet, {
     if (is.list(facets)) {
       rows <- as.quoted(facets[[1]])
       cols <- as.quoted(facets[[2]])
+    }
+    if (length(rows) + length(cols) == 0) {
+      stop("Must specify at least one variable to facet by", call. = FALSE)
     }
     
     .$proto(
@@ -77,14 +80,6 @@ FacetGrid <- proto(Facet, {
       levels <- rbind(levels, ldply(margin_vals, function(var) {
         cunion(unique(levels[var]), all_marg)
       }))      
-    }
-    
-    # Create row & column variables.
-    if (nrow(levels) == 0) {
-      # Special case for . ~ .
-      .$panel_info <- data.frame(PANEL = 1, ROW = 1, COL = 1, 
-        SCALE_X = 1, SCALE_Y = 1)
-      return(invisible(NULL))
     }
     
     # Create panel info dataset
@@ -210,7 +205,7 @@ FacetGrid <- proto(Facet, {
     
     # Add background and foreground to panels
     panels_grob <- lapply(panels, function(i) {
-      fg <- coord$guide_foreground(c, theme)
+      fg <- coord$guide_foreground(coord_details[[i]], theme)
       bg <- coord$guide_background(coord_details[[i]], theme)
       grobTree(bg, panels_grob[[i]], fg)      
     })

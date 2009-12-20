@@ -59,7 +59,7 @@
 #X # Use different geoms
 #X qplot(mpg, wt, geom="path")
 #X qplot(factor(cyl), wt, geom=c("boxplot", "jitter"))
-qplot <- function(x, y = NULL, z=NULL, ..., data, facets = . ~ ., margins=FALSE, geom = "auto", stat=list(NULL), position=list(NULL), xlim = c(NA, NA), ylim = c(NA, NA), log = "", main = NULL, xlab = deparse(substitute(x)), ylab = deparse(substitute(y)), asp = NA) {
+qplot <- function(x, y = NULL, z=NULL, ..., data, facets = NULL, margins=FALSE, geom = "auto", stat=list(NULL), position=list(NULL), xlim = c(NA, NA), ylim = c(NA, NA), log = "", main = NULL, xlab = deparse(substitute(x)), ylab = deparse(substitute(y)), asp = NA) {
 
   argnames <- names(as.list(match.call(expand.dots=FALSE)[-1]))
   arguments <- as.list(match.call()[-1])
@@ -100,7 +100,9 @@ qplot <- function(x, y = NULL, z=NULL, ..., data, facets = . ~ ., margins=FALSE,
   env <- parent.frame()
   p <- ggplot(data, aesthetics, environment = env)
   
-  if (is.formula(facets) && length(facets) == 2) {
+  if (is.null(facets)) {
+    p <- p + facet_null()
+  } else if (is.formula(facets) && length(facets) == 2) {
     p <- p + facet_wrap(facets)
   } else {
     p <- p + facet_grid(facets = deparse(facets), margins = margins)
