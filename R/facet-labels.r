@@ -74,7 +74,7 @@ ggstrip <- function(text, horizontal = TRUE, theme) {
       theme_render(theme, "strip.background"),
       label
     ),
-    width = grobWidth(label) + unit(0.5, "lines"),
-    height = grobHeight(label) + unit(0.5, "lines")
+    width = unit(width_cm(label), "cm") + unit(0.5, "lines"),
+    height = unit(height_cm(label), "cm") + unit(0.5, "lines")
   ))
 }

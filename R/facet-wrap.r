@@ -13,10 +13,6 @@ FacetWrap <- proto(Facet, {
     )
   }
   
-  conditionals <- function(.) {
-    names(.$facets)
-  }
-  
   # Data shape
   initialise <- function(., data) {
     # Compute facetting variables for all layers
@@ -24,8 +20,27 @@ FacetWrap <- proto(Facet, {
       as.data.frame(eval.quoted(.$facets, df))
     })
     
-    .$facet_levels <- split_labels(vars, .$drop)
-    .$facet_levels$PANEL <- factor(1:nrow(.$facet_levels))
+    # Arrange 1d structure into a grid -------
+    if (is.null(.$ncol) && is.null(.$nrow)) {
+      ncol <- ceiling(sqrt(n))
+      nrow <- ceiling(n / ncol)
+    } else if (is.null(.$ncol)) {
+      nrow <- .$nrow
+      ncol <- ceiling(n / nrow)
+    } else if (is.null(.$nrow)) {
+      ncol <- .$ncol
+      nrow <- ceiling(n / ncol)
+    } else {
+      ncol <- .$ncol
+      nrow <- .$nrow
+    }
+    stopifnot(nrow * ncol >= n)
+    
+    
+    .$panel_info <- split_labels(vars, .$drop)
+    .$panel_info$PANEL <- factor(1:nrow(.$facet_levels))
+    
+    
   }
   
   stamp_data <- function(., data) {
@@ -84,21 +99,7 @@ FacetWrap <- proto(Facet, {
       panels[[1,i]] <- ggname(name, grobTree(bg, panels_grob[[1, i]], fg))
     }
     
-    # Arrange 1d structure into a grid -------
-    if (is.null(.$ncol) && is.null(.$nrow)) {
-      ncol <- ceiling(sqrt(n))
-      nrow <- ceiling(n / ncol)
-    } else if (is.null(.$ncol)) {
-      nrow <- .$nrow
-      ncol <- ceiling(n / nrow)
-    } else if (is.null(.$nrow)) {
-      ncol <- .$ncol
-      nrow <- ceiling(n / ncol)
-    } else {
-      ncol <- .$ncol
-      nrow <- .$nrow
-    }
-    stopifnot(nrow * ncol >= n)
+
 
     # Create a grid of interwoven strips and panels
     panelsGrid <- grobGrid(
@@ -183,82 +184,6 @@ FacetWrap <- proto(Facet, {
 
     llply(labels, ggstrip, theme = theme)
   }
-  
-  # Position scales ----------------------------------------------------------
-  
-  position_train <- function(., data, scales) {
-    fr <- .$free
-    n <- nrow(.$facet_levels)
-    if (is.null(.$scales$x) && scales$has_scale("x")) {
-      .$scales$x <- scales_list(scales$get_scales("x"), n, fr$x)
-    }
-    if (is.null(.$scales$y) && scales$has_scale("y")) {
-      .$scales$y <- scales_list(scales$get_scales("y"), n, fr$y)
-    }
-
-    lapply(data, function(l) {
-      for(i in seq_along(.$scales$x)) {
-        .$scales$x[[i]]$train_df(l[[i]], fr$x)
-      }
-      for(i in seq_along(.$scales$y)) {
-        .$scales$y[[i]]$train_df(l[[i]], fr$y)
-      }
-    })
-  }
-  
-  position_map <- function(., data, scales) {
-    lapply(data, function(l) {
-      for(i in seq_along(.$scales$x)) {
-        l[1, i] <- lapply(l[1, i], function(old) {
-          new <- .$scales$x[[i]]$map_df(old)
-          if (!is.null(.$scales$y[[i]])) {
-            new <- cbind(new, .$scales$y[[i]]$map_df(old))
-          }
-          
-          
-          cunion(new, old)
-        }) 
-      }
-      l
-    })
-  }
-  
-  make_grobs <- function(., data, layers, coord) {
-    lapply(seq_along(data), function(i) {
-      layer <- layers[[i]]
-      layerd <- data[[i]]
-      grobs <- matrix(list(), nrow = nrow(layerd), ncol = ncol(layerd))
-
-      for(i in seq_along(.$scales$x)) {
-        scales <- list(
-          x = .$scales$x[[i]]$clone(), 
-          y = .$scales$y[[i]]$clone()
-        )
-        details <- coord$compute_ranges(scales)
-        grobs[[1, i]] <- layer$make_grob(layerd[[1, i]], details, coord)
-      }
-      grobs
-    })
-  }
-  
-  calc_statistics <- function(., data, layers) {
-    lapply(seq_along(data), function(i) {
-      layer <- layers[[i]]
-      layerd <- data[[i]]
-      data_out <- matrix(list(), nrow = nrow(layerd), ncol = ncol(layerd))
-
-      for(j in seq_len(nrow(.$facet_levels))) {
-        scales <- list(
-          x = .$scales$x[[j]], 
-          y = .$scales$y[[j]]
-        )
-        data_out[[1, j]] <- layer$calc_statistic(layerd[[1, j]], scales)
-      }
-      data_out
-    })
-  }
-  
-
   # Documentation ------------------------------------------------------------
 
   objname <- "wrap"

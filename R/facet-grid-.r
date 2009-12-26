@@ -29,7 +29,7 @@ FacetGrid <- proto(Facet, {
     .$proto(
       rows = rows, cols = cols, margins = margins,
       free = free, space_is_free = (space == "free"),
-      labeller = list(labeller), as.table = as.table
+      labeller = labeller, as.table = as.table
     )
   }
   
@@ -143,14 +143,121 @@ FacetGrid <- proto(Facet, {
 
   # Create grobs for each component of the panel guides
   add_guides <- function(., panels_grob, coord, theme) {
+    panels <- .$panel_info$PANEL    
+    coord_details <- llply(panels, function(i) {
+      coord$compute_ranges(.$panel_scales(i))
+    })
+    
+    axes <- .$build_axes(coord, coord_details, theme)
+    strips <- .$build_strips(coord_details, theme)
+    panels <- .$build_panels(panels_grob, coord, coord_details, theme)
+    # legend
+    # labels
+    
+    # Combine components into complete plot
+    centre <- (axes$l$clone())$cbind(panels)$cbind(strips$r)
+    top <- (strips$t$clone())$
+      add_cols(strips$r$widths)$
+      add_cols(axes$l$widths, pos = 0)
+    bottom <- (axes$b$clone())$
+      add_cols(strips$r$widths)$
+      add_cols(axes$l$widths, pos = 0)
+      
+    complete <- centre$clone()$
+      rbind(top, pos = 0)$
+      rbind(bottom)
+    complete$respect <- panels$respect
+    complete$name <- "layout"
+    
+    complete
+  }
+  
+  build_strips <- function(., coord_details, theme) {
+    col_vars <- ddply(.$panel_info, "COL", uniquecols)
+    row_vars <- ddply(.$panel_info, "ROW", uniquecols)
 
+    list(
+      r = .$build_strip(row_vars, theme, "r"), 
+      t = .$build_strip(col_vars, theme, "t")
+    )
+  }
+  
+  build_strip <- function(., label_df, theme, side = "right") {
+    side <- match.arg(side, c("t", "l", "b", "r"))
+    horizontal <- side %in% c("t", "b")
+    labeller <- match.fun(.$labeller)
+    
+    label_df <- label_df[setdiff(names(label_df), 
+      c("PANEL", "COL", "ROW", "SCALE_X", "SCALE_Y"))]
+    
+    # No labelling data, so return empty row/col
+    if (empty(label_df)) {
+      if (horizontal) {
+        widths <- unit(rep(1, max(.$panel_info$COL)), "null")
+        return(layout_empty_row(widths))
+      } else {
+        heights <- unit(rep(1, max(.$panel_info$ROW)), "null")
+        return(layout_empty_col(heights))
+      }
+    }
+    
+    # Create matrix of labels
+    labels <- matrix(list(), nrow = nrow(label_df), ncol = ncol(label_df))
+    for (i in seq_len(ncol(label_df))) {
+      labels[, i] <- labeller(names(label_df)[i], label_df[, i])
+    }
+    
+    # Render as grobs
+    grobs <- aaply(labels, c(1,2), ggstrip, theme = theme, 
+      horizontal = horizontal, .drop = FALSE)
+    
+    # Create layout
+    name <- paste("strip", side, sep = "-")
+    if (horizontal) {
+      grobs <- t(grobs)
+      
+      # Each row is as high as the highest as a wide as the panel
+      row_height <- function(row) max(laply(row, height_cm))
+      heights <- unit(apply(grobs, 1, row_height), "cm")
+      widths <- unit(rep(1, ncol(grobs)), "null")
+    } else {
+      # Each row is wide as the widest and as high as the panel
+      col_width <- function(col) max(laply(col, width_cm))
+      widths <- unit(apply(grobs, 2, col_width), "cm")
+      heights <- unit(rep(1, nrow(grobs)), "null")
+    }
+    strips <- layout_matrix(name, grobs, heights = heights, widths = widths)
+    
+    if (horizontal) {
+      strips$add_col_space(theme$panel.margin)
+    } else {
+      strips$add_row_space(theme$panel.margin)
+    }
+    strips
+  }
+  
+  build_axes <- function(., coord, coord_details, theme) {
+    axes <- list()
+    
+    # Horizontal axes
+    cols <- which(.$panel_info$ROW == 1)
+    grobs <- lapply(coord_details[cols], coord$guide_axis_h, theme)
+    axes$b <- layout_row("axis-b", grobs)$add_col_space(theme$panel.margin)
+    
+    # Vertical axes
+    rows <- which(.$panel_info$COL == 1)
+    grobs <- lapply(coord_details[rows], coord$guide_axis_v, theme)
+    axes$l <- layout_col("axis-l", grobs)$add_row_space(theme$panel.margin)
+
+    axes
+  }
+  build_panels <- function(., panels_grob, coord, coord_details, theme) {
     aspect_ratio <- theme$aspect.ratio
     
     # If user hasn't set aspect ratio, and we have fixed scales, then
     # ask the coordinate system if it wants to specify one
     if (is.null(aspect_ratio) && !.$free$x && !.$free$y) {
-      ranges <- coord$compute_ranges(.$panel_scales(1))
-      aspect_ratio <- coord$compute_aspect(ranges)
+      aspect_ratio <- coord$compute_aspect(coord_details[[1]])
     }
     
     if (is.null(aspect_ratio)) {
@@ -159,141 +266,38 @@ FacetGrid <- proto(Facet, {
     } else {
       respect <- TRUE
     }
-
-    panels <- .$panel_info$PANEL
-    cols <- which(.$panel_info$ROW == 1)
-    rows <- which(.$panel_info$COL == 1)
-    
-    coord_details <- llply(panels, function(i) {
-      coord$compute_ranges(.$panel_scales(i))
-    })
-    
-    # Horizontal axes
-    axes_h <- lapply(coord_details[cols], coord$guide_axis_h, theme)
-    axes_h_height <- do.call("max2", llply(axes_h, grobHeight))
-    axeshGrid <- grobGrid(
-      "axis_h", axes_h, nrow = 1, ncol = length(cols),
-      heights = axes_h_height, clip = "off"
-    )
-    
-    # Vertical axes
-    axes_v <- lapply(coord_details[rows], coord$guide_axis_v, theme)
-    axes_v_width <- do.call("max2", llply(axes_v, grobWidth))
-    axesvGrid <- grobGrid(
-      "axis_v", axes_v, nrow = length(rows), ncol = 1,
-      widths = axes_v_width, as.table = .$as.table, clip = "off"
-    )
-    
-    # Strips
-    labels <- .$labels_default(.$shape, theme)
-    
-    strip_widths <- llply(labels$v, grobWidth)
-    strip_widths <- do.call("unit.c", llply(1:ncol(strip_widths), 
-      function(i) do.call("max2", strip_widths[, i])))
-    stripvGrid <- grobGrid(
-      "strip_v", labels$v, nrow = nrow(labels$v), ncol = ncol(labels$v),
-      widths = strip_widths, as.table = .$as.table
-    )
-      
-    strip_heights <- llply(labels$h, grobHeight)
-    strip_heights <- do.call("unit.c", llply(1:nrow(strip_heights),
-       function(i) do.call("max2", strip_heights[i, ])))
-    striphGrid <- grobGrid(
-      "strip_h", labels$h, nrow = nrow(labels$h), ncol = ncol(labels$h),
-      heights = strip_heights
-    )
     
     # Add background and foreground to panels
-    panels_grob <- lapply(panels, function(i) {
+    panels <- .$panel_info$PANEL    
+    panel_grobs <- lapply(panels, function(i) {
       fg <- coord$guide_foreground(coord_details[[i]], theme)
       bg <- coord$guide_background(coord_details[[i]], theme)
       grobTree(bg, panels_grob[[i]], fg)      
     })
-    dim(panels_grob) <- c(length(rows), length(cols))
+    nrow <- max(.$panel_info$ROW)
+    ncol <- max(.$panel_info$COL)
+    dim(panel_grobs) <- c(nrow, ncol)
 
     if(.$space_is_free) {
       size <- function(y) unit(diff(y$output_expand()), "null")
-      panel_widths <- do.call("unit.c", llply(.$scales$x, size))
-      panel_heights <- do.call("unit.c", llply(.$scales$y, size))
+      x_scales <- .$panel_info$scale_x[.$panel_info$ROW == 1]
+      y_scales <- .$panel_info$scale_y[.$panel_info$COL == 1]
+
+      panel_widths <- do.call("unit.c", llply(.$scales$x, size))[x_scales]
+      panel_heights <- do.call("unit.c", llply(.$scales$y, size))[y_scales]
     } else {
-      panel_widths <- unit(1, "null")
-      panel_heights <- unit(1 * aspect_ratio, "null")
+      panel_widths <- rep(unit(1, "null"), ncol)
+      panel_heights <- rep(unit(1 * aspect_ratio, "null"), nrow)
     }
-
-    panelGrid <- grobGrid(
-      "panel", t(panels_grob), ncol = length(cols), nrow = length(rows),
-      widths = panel_widths, heights = panel_heights, as.table = .$as.table,
-      respect = respect
-    )
-       
-    # Add gaps and compute widths and heights
-    fill_tl <- spacer(nrow(labels$h), 1)
-    fill_tr <- spacer(nrow(labels$h), ncol(labels$v))
-    fill_bl <- spacer(1, 1)
-    fill_br <- spacer(1, ncol(labels$v))
-    
-    all <- rbind(
-      cbind(fill_tl,   striphGrid, fill_tr),
-      cbind(axesvGrid, panelGrid,  stripvGrid),
-      cbind(fill_bl,   axeshGrid,  fill_br) 
-    )
-    # theme$panel.margin, theme$panel.margin
-    
-    # from left to right
-    hgap_widths <- do.call("unit.c", compact(list(
-      unit(0, "cm"), # no gap after axis
-      rep.unit2(theme$panel.margin, length(cols) - 1), # gap after all panels except last
-      unit(rep(0, ncol(stripvGrid) + 1), "cm") # no gap after strips 
-    )))
-    hgap <- grobGrid("hgap", 
-      ncol = ncol(all), nrow = nrow(all),
-      widths = hgap_widths, 
-    )
-    
-    # from top to bottom
-    vgap_heights <- do.call("unit.c", compact(list(
-      unit(rep(0, nrow(striphGrid) + 1), "cm"), # no gap after strips 
-      rep.unit2(theme$panel.margin, length(rows) - 1), # gap after all panels except last
-      unit(0, "cm") # no gap after axis
-    )))
-    
-    vgap <- grobGrid("vgap",
-      nrow = nrow(all), ncol = ncol(all) * 2,
-      heights = vgap_heights
-    )
-    
-    rweave(cweave(all, hgap), vgap)
-  }
-
-
-  labels_default <- function(., gm, theme) {
-    col_vars <- ddply(.$panel_info, "COL", uniquecols)
-    row_vars <- ddply(.$panel_info, "ROW", uniquecols)
-
-    list(
-      h = t(.$make_labels(col_vars, theme)), 
-      v = .$make_labels(row_vars, theme, horizontal = FALSE)
-    )
-  }
   
-  make_labels <- function(., label_df, theme, ...) {
-    labeller <- match.fun(.$labeller[[1]])
-    
-    label_df <- label_df[setdiff(names(label_df), 
-      c("PANEL", "COL", "ROW", "SCALE_X", "SCALE_Y"))]
-  
-    labels <- matrix(list(), nrow = nrow(label_df), ncol = ncol(label_df))
-    for (i in seq_len(ncol(label_df))) {
-      labels[, i] <- labeller(names(label_df)[i], label_df[, i])
-    }
-    
-    if (nrow(label_df) == 1) {
-      grobs <- matrix(list(zeroGrob()))
-    } else {
-      grobs <- apply(labels, c(1,2), ggstrip, theme = theme, ...)
-    }
-    grobs
+
+    panels <- layout_matrix("panel", panel_grobs, panel_widths, panel_heights)
+    panels$respect <- respect
+    panels$add_col_space(theme$panel.margin)
+    panels$add_row_space(theme$panel.margin)
+    panels
   }
+
 
   # Documentation ------------------------------------------------------------
 
