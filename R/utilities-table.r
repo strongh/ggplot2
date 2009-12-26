@@ -1,8 +1,4 @@
-library(mutatr)
-library(grid)
-library(plyr)
-
-source("table-templates.r")
+require(mutatr)
 
 # respect is a layout property
 # each grob will occupy it's own viewport -> 

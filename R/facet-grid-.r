@@ -143,8 +143,7 @@ FacetGrid <- proto(Facet, {
 
   # Create grobs for each component of the panel guides
   add_guides <- function(., panels_grob, coord, theme) {
-    panels <- .$panel_info$PANEL    
-    coord_details <- llply(panels, function(i) {
+    coord_details <- llply(.$panel_info$PANEL, function(i) {
       coord$compute_ranges(.$panel_scales(i))
     })
     
@@ -160,7 +159,7 @@ FacetGrid <- proto(Facet, {
       add_cols(strips$r$widths)$
       add_cols(axes$l$widths, pos = 0)
     bottom <- (axes$b$clone())$
-      add_cols(strips$r$widths)$
+      add_cols(strip$r$widths)$
       add_cols(axes$l$widths, pos = 0)
       
     complete <- centre$clone()$
