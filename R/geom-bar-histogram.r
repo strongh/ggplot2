@@ -13,7 +13,7 @@ GeomHistogram <- proto(GeomBar, {
   
   examples <- function(.) {
     
-    # Simple examles
+    # Simple examples
     qplot(rating, data=movies, geom="histogram")
     qplot(rating, data=movies, weight=votes, geom="histogram")
     qplot(rating, data=movies, weight=votes, geom="histogram", binwidth=1)

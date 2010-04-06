@@ -1,6 +1,6 @@
 GeomJitter <- proto(GeomPoint, {
   objname <- "jitter"
-  details <- "<p>The jitter geom is a convenient default for geom_point with position = 'jitter'.  See position_jitter for more details on adjusting the amount of jittering.</p>"
+  details <- "<p>The jitter geom is a convenient default for geom_point with position = 'jitter'.  See position_jitter for more details on adjusting the amount of jittering. Defaults are width 0.4 and height 0.4.</p>"
   advice <- "<p>It is often useful for plotting categorical data.</p>"
   
   desc <- "Points, jittered to reduce overplotting"

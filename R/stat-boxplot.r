@@ -1,6 +1,7 @@
 StatBoxplot <- proto(Stat, {
   objname <- "boxplot" 
   desc <- "Calculate components of box and whisker plot"
+  details <- "<p>Uses standard Tukey defintion of boxplot</p>"
   desc_outputs <- list(
     "width" = "width of boxplot",
     "ymin" = "lower whisker, lower hinge - 1.5 * IQR",

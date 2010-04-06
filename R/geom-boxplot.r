@@ -42,6 +42,7 @@ GeomBoxplot <- proto(Geom, {
 
   objname <- "boxplot"
   desc <- "Box and whiskers plot"
+  details <- "<p>Uses standard Tukey defintion of boxplot</p>"
   guide_geom <- function(.) "boxplot"
   
   draw_legend <- function(., data, ...)  {
