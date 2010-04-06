@@ -1,6 +1,4 @@
 ScaleGradient <- proto(ScaleContinuous, expr={
-  aliases <- c("scale_colour_continuous", "scale_fill_continuous", "scale_color_continuous", "scale_color_gradient")
-
   new <- function(., name = NULL, low = "#3B4FB8", high = "#B71B1A", space = "rgb", ...) {
 
     .super$new(., name = name, low = low, high = high, space = space, ...)
@@ -92,7 +90,6 @@ ScaleGradient2 <- proto(ScaleContinuous, expr={
       midpoint = midpoint, space = space, ...)
   }
   
-  aliases <- c("scale_color_gradient2")
   map <- function(., x) {
     rng <- .$output_set()  - .$midpoint
     extent <- max(abs(rng))

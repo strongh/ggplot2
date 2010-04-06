@@ -3,9 +3,7 @@ ScaleShapeDiscrete <- proto(ScaleDiscrete, expr={
   common <- NULL
   .input <- .output <- "shape"
   desc <- "Point glyph shapes"
-  solid <- TRUE
-  aliases <- c("scale_shape")
-  
+  solid <- TRUE  
 
   new <- function(., name=NULL, solid=TRUE, limits = NULL, breaks = NULL, labels = NULL, formatter = identity, legend = TRUE) {
     

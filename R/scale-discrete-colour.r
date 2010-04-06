@@ -4,9 +4,7 @@ ScaleColour <- proto(ScaleDiscrete, expr={
   common <- c()
 })
 
-ScaleHue <- proto(ScaleColour, expr={
-  aliases <- c("scale_colour_discrete", "scale_fill_discrete", "scale_color_hue")
-  
+ScaleHue <- proto(ScaleColour, expr={  
   new <- function(., name=NULL, h=c(0,360) + 15, l=65, c=100, limits=NULL, breaks = NULL, labels=NULL, h.start = 0, direction = 1,  formatter = identity, legend = TRUE, variable) {
     b_and_l <- check_breaks_and_labels(breaks, labels)
     
@@ -89,7 +87,6 @@ ScaleBrewer <- proto(ScaleColour, expr={
     b_and_l <- check_breaks_and_labels(breaks, labels)
     .$proto(name=name, palette=palette, type=type, .input=variable, .output=variable, .labels = b_and_l$labels, breaks = b_and_l$breaks, limits= limits, formatter = formatter, legend = legend, na.colour = na.colour)
   }
-  aliases <- c("scale_color_brewer")
 
   output_set <- function(.) {
     missing <- is.na(.$input_set())
