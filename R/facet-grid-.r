@@ -43,6 +43,8 @@ FacetGrid <- proto(Facet, {
   #   layer)
   train <- function(., data) {    
     all <- c(.$rows, .$cols)
+    row_names <- names(.$rows)
+    col_names <- names(.$cols)
     
     # Here we need to build up a complete list of all variables used for 
     # facetting in different layers, ideally in such a way that we don't
@@ -58,29 +60,13 @@ FacetGrid <- proto(Facet, {
     vars <- lapply(names(all), function(var) lapply(layers, "[[", var))
     vars <- lapply(vars, function(x) unique(concat(x)))
     names(vars) <- names(all)
-    
+
+    # Figure out the levels for each panel.  I don't think this currently
+    # works correctly - it creates all possibly combinations, not just 
+    # all possible combinations of rows and columns
     levels <- do.call("expand.grid", vars)  
     levels[] <- lapply(levels, as.factor)
-
-    # Add margins
-    margins <- .$margins
-    if (is.logical(margins)) {
-      if (margins) {
-        margins <- c(names(all), "grand_row", "grand_col")
-      } else {
-        margins <- c()
-      }
-    }
-    margin_vals <- margin.vars(list(names(.$rows), names(.$cols)), margins)
-    
-    if (length(margin_vals) > 0) {
-      all_marg <- as.data.frame(rep(list("(all)"), ncol(levels)))
-      names(all_marg) <- names(levels)
-
-      levels <- rbind(levels, ldply(margin_vals, function(var) {
-        cunion(unique(levels[var]), all_marg)
-      }))      
-    }
+    levels <- add_margins(levels, row_names, col_names, .$margins)
     
     # Create panel info dataset
     panel <- ninteraction(levels)
@@ -88,13 +74,13 @@ FacetGrid <- proto(Facet, {
     
     panels <- cbind(
       PANEL = panel,
-      ROW = ninteraction(levels[names(.$rows)]) %||% 1,
-      COL = ninteraction(levels[names(.$cols)]) %||% 1,
+      ROW = ninteraction(levels[row_names]) %||% 1,
+      COL = ninteraction(levels[col_names]) %||% 1,
       SCALE_X = 1,
       SCALE_Y = 1,
       levels
     )
-    panels <- unrowname(panels[order(panels$PANEL), ])
+    panels <- arrange(panels, PANEL)
     
     # Relax constraints, if necessary
     if (.$free$x) df$SCALE_X <- panels$ROW
@@ -105,12 +91,12 @@ FacetGrid <- proto(Facet, {
   }
 
   map_layer <- function(., data) {
-    # Add extra data for margins
-        
     # Compute facetting variables
     all <- c(.$rows, .$cols)
     facet_vals <- as.data.frame(compact(
       eval.quoted(all, data, emptyenv(), try = TRUE)))
+
+    data <- add_margins(data, names(.$rows), names(.$cols), .$margins)
           
     # If any facetting variables are missing, add them in by 
     # duplicating the data
