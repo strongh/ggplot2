@@ -47,9 +47,7 @@ FacetNull <- proto(Facet, {
       zeroGrob(), axis_h
     ), ncol = 2, byrow = T)
     
-    grobGrid(
-      name = c("axis_v", "panel", "spacer", "axis_h"), 
-      t(all), ncol = 2, nrow = 2, as.table = TRUE,
+    layout_matrix("layout", all, 
       widths = unit.c(grobWidth(axis_v), unit(1, "null")),
       heights = unit.c(unit(1, "null"), grobHeight(axis_h))
     )
