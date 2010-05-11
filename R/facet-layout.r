@@ -7,9 +7,8 @@
 #'   that match the facetting variable values up with their position in the 
 #'   grid
 #' @keywords internal
-layout_grid <- function(data, rows = NULL, cols = NULL) {
+layout_grid <- function(data, rows = NULL, cols = NULL, margins = NULL) {
   if (length(rows) == 0 && length(cols) == 0) return(layout_null())
-
   rows <- as.quoted(rows)
   cols <- as.quoted(cols)
   
@@ -29,15 +28,13 @@ layout_grid <- function(data, rows = NULL, cols = NULL) {
   base <- unique(ldply(values[has_all]))
   
   # Systematically add on missing combinations
-  if (!all(has_all)) {
-    for (value in values[!has_all]) {
-      if (empty(value)) next;
-      
-      old <- base[setdiff(names(base), names(value))]
-      new <- value[intersect(names(base), names(value))]
-      
-      base <- rbind(base, expand.grid.df(old, new))
-    }
+  for (value in values[!has_all]) {
+    if (empty(value)) next;
+    
+    old <- base[setdiff(names(base), names(value))]
+    new <- value[intersect(names(base), names(value))]
+    
+    base <- rbind(base, expand.grid.df(old, new))
   }
   
   # Create panel info dataset
@@ -50,9 +47,7 @@ layout_grid <- function(data, rows = NULL, cols = NULL) {
     COL = ninteraction(base[names(cols)]) %||% 1,
     base
   )
-  panels <- arrange(panels, PANEL)
-  
-  panels
+  arrange(panels, PANEL)
 }
 
 layout_null <- function(data) { 
