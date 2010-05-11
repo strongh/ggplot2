@@ -45,8 +45,8 @@ FacetGrid <- proto(Facet, {
     panels <- layout_grid(data, .$rows, .$cols, .$margins)
 
     # Relax constraints, if necessary
-    if (.$free$x) panels$SCALE_X <- panels$ROW
-    if (.$free$y) panels$SCALE_Y <- panels$COL
+    panels$SCALE_X <- if (.$free$x) panels$ROW else 1
+    panels$SCALE_Y <- if (.$free$y) panels$COL else 1
     
     .$panel_info <- panels
     invisible(NULL)
@@ -65,6 +65,7 @@ FacetGrid <- proto(Facet, {
     axes <- .$build_axes(coord, coord_details, theme)
     strips <- .$build_strips(coord_details, theme)
     panels <- .$build_panels(panels_grob, coord, coord_details, theme)
+    browser()
     # legend
     # labels
     
@@ -74,7 +75,7 @@ FacetGrid <- proto(Facet, {
       add_cols(strips$r$widths)$
       add_cols(axes$l$widths, pos = 0)
     bottom <- (axes$b$clone())$
-      add_cols(strip$r$widths)$
+      add_cols(strips$r$widths)$
       add_cols(axes$l$widths, pos = 0)
       
     complete <- centre$clone()$
@@ -87,8 +88,8 @@ FacetGrid <- proto(Facet, {
   }
   
   build_strips <- function(., coord_details, theme) {
-    col_vars <- ddply(.$panel_info, "COL", uniquecols)
-    row_vars <- ddply(.$panel_info, "ROW", uniquecols)
+    col_vars <- unique(.$panel_info[names(.$cols)])
+    row_vars <- unique(.$panel_info[names(.$rows)])
 
     list(
       r = .$build_strip(row_vars, theme, "r"), 
@@ -100,9 +101,6 @@ FacetGrid <- proto(Facet, {
     side <- match.arg(side, c("t", "l", "b", "r"))
     horizontal <- side %in% c("t", "b")
     labeller <- match.fun(.$labeller)
-    
-    label_df <- label_df[setdiff(names(label_df), 
-      c("PANEL", "COL", "ROW", "SCALE_X", "SCALE_Y"))]
     
     # No labelling data, so return empty row/col
     if (empty(label_df)) {
@@ -130,7 +128,7 @@ FacetGrid <- proto(Facet, {
     if (horizontal) {
       grobs <- t(grobs)
       
-      # Each row is as high as the highest as a wide as the panel
+      # Each row is as high as the highest and as a wide as the panel
       row_height <- function(row) max(laply(row, height_cm))
       heights <- unit(apply(grobs, 1, row_height), "cm")
       widths <- unit(rep(1, ncol(grobs)), "null")
@@ -183,14 +181,16 @@ FacetGrid <- proto(Facet, {
     
     # Add background and foreground to panels
     panels <- .$panel_info$PANEL    
+    ncol <- max(.$panel_info$COL)
+    nrow <- max(.$panel_info$ROW)
     panel_grobs <- lapply(panels, function(i) {
       fg <- coord$guide_foreground(coord_details[[i]], theme)
       bg <- coord$guide_background(coord_details[[i]], theme)
       grobTree(bg, panels_grob[[i]], fg)      
     })
-    nrow <- max(.$panel_info$ROW)
-    ncol <- max(.$panel_info$COL)
-    dim(panel_grobs) <- c(nrow, ncol)
+    
+    panel_matrix <- matrix(list(nullGrob()), nrow = nrow, ncol = ncol)
+    panel_matrix[panels] <- panel_grobs
 
     if(.$space_is_free) {
       size <- function(y) unit(diff(y$output_expand()), "null")
@@ -205,7 +205,8 @@ FacetGrid <- proto(Facet, {
     }
   
 
-    panels <- layout_matrix("panel", panel_grobs, panel_widths, panel_heights)
+    panels <- layout_matrix("panel", panel_matrix,
+      panel_widths, panel_heights)
     panels$respect <- respect
     panels$add_col_space(theme$panel.margin)
     panels$add_row_space(theme$panel.margin)

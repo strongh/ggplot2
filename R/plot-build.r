@@ -13,7 +13,6 @@ ggplot_build <- function(plot) {
   # Apply function to layer and matching data
   dlapply <- function(f) mlply(cbind(d = data, p = layers), f)
 
-
   # Facet - adding extra data for margins & missing facetting variables,
   # and adding on a PANEL variable
   layer_data <- lapply(layers, function(y) y$data)

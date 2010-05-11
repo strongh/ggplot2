@@ -58,7 +58,7 @@ TableLayout <- Object$clone()$do({
     n <- length(heights)
     
     # Shift existing rows down
-    self$heights <- insert(self$heights, heights, pos)
+    self$heights <- insert.unit(self$heights, heights, pos)
     self$info <- transform(self$info,
       t = ifelse(t > pos, t + n, t),
       b = ifelse(b > pos, b + n, b)
@@ -73,7 +73,7 @@ TableLayout <- Object$clone()$do({
     n <- length(widths)
     
     # Shift existing columns right
-    self$widths <- insert(self$widths, widths, pos)
+    self$widths <- insert.unit(self$widths, widths, pos)
     self$info <- transform(self$info,
       l = ifelse(l > pos, l + n, l),
       r = ifelse(r > pos, r + n, r)
@@ -119,7 +119,7 @@ TableLayout <- Object$clone()$do({
   self$rbind <- function(other, pos = self$rows) {
     if (other$rows == 0) return(self)
     
-    self$heights <- insert(self$heights, other$heights, pos)
+    self$heights <- insert.unit(self$heights, other$heights, pos)
     self$grobs <- append(self$grobs, other$grobs)
     
     other_info <- transform(other$info, t = t + pos, b = b + pos)
@@ -134,7 +134,7 @@ TableLayout <- Object$clone()$do({
   self$cbind <- function(other, pos = self$cols) {
     if (other$cols == 0) return(self)
     
-    self$widths <- insert(self$widths, other$widths, pos)
+    self$widths <- insert.unit(self$widths, other$widths, pos)
     self$grobs <- append(self$grobs, other$grobs)
     
     other_info <- transform(other$info, l = l + pos, r = r + pos)
@@ -199,17 +199,17 @@ TableLayout <- Object$clone()$do({
   }
 })
 
-insert <- function (x, values, after = length(x)) {
+insert.unit <- function (x, values, after = length(x)) {
   lengx <- length(x)
   if (lengx == 0) return(values)
   if (length(values) == 0) return(x)
   
   if (after <= 0) {
-    concat(values, x)
+    unit.c(values, x)
   } else if (after >= lengx) {
-    concat(x, values)
+    unit.c(x, values)
   } else {
-    concat(x[1L:after], values, x[(after + 1L):lengx])
+    unit.c(x[1L:after], values, x[(after + 1L):lengx])
   }
 }
 
