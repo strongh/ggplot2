@@ -41,50 +41,12 @@ FacetGrid <- proto(Facet, {
   # 
   # @param data a list of data frames (one for the plot and one for each
   #   layer)
-  train <- function(., data) {    
-    all <- c(.$rows, .$cols)
-    row_names <- names(.$rows)
-    col_names <- names(.$cols)
-    
-    # Here we need to build up a complete list of all variables used for 
-    # facetting in different layers, ideally in such a way that we don't
-    # create combinations that don't exist somewhere in the raw data. The
-    # complication is that some layers might not have all facetting variables,
-    # so this goal might not be achievable (and the code currently doesn't
-    # manage to do that, instead including all combinations)
-        
-    # Get all possible values
-    layers <- lapply(data, eval.quoted, expr = all, emptyenv(), try = TRUE)
-    # Rearrange so instead of variables nested inside layers,
-    # have layers nested inside lists    
-    vars <- lapply(names(all), function(var) lapply(layers, "[[", var))
-    vars <- lapply(vars, function(x) unique(concat(x)))
-    names(vars) <- names(all)
+  train <- function(., data) { 
+    panels <- layout_grid(data, .$rows, .$cols)
 
-    # Figure out the levels for each panel.  I don't think this currently
-    # works correctly - it creates all possibly combinations, not just 
-    # all possible combinations of rows and columns
-    levels <- do.call("expand.grid", vars)  
-    levels[] <- lapply(levels, as.factor)
-    levels <- add_margins(levels, row_names, col_names, .$margins)
-    
-    # Create panel info dataset
-    panel <- ninteraction(levels)
-    panel <- factor(panel, levels = seq_len(attr(panel, "n")))
-    
-    panels <- cbind(
-      PANEL = panel,
-      ROW = ninteraction(levels[row_names]) %||% 1,
-      COL = ninteraction(levels[col_names]) %||% 1,
-      SCALE_X = 1,
-      SCALE_Y = 1,
-      levels
-    )
-    panels <- arrange(panels, PANEL)
-    
     # Relax constraints, if necessary
-    if (.$free$x) df$SCALE_X <- panels$ROW
-    if (.$free$y) df$SCALE_Y <- panels$COL
+    if (.$free$x) panels$SCALE_X <- panels$ROW
+    if (.$free$y) panels$SCALE_Y <- panels$COL
     
     .$panel_info <- panels
     invisible(NULL)
