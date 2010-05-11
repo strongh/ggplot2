@@ -36,7 +36,10 @@ layout_grid <- function(data, rows = NULL, cols = NULL, margins = NULL) {
     
     base <- rbind(base, expand.grid.df(old, new))
   }
-  
+
+  # Add margins
+  base <- add_margins(base, names(rows), names(cols), margins)
+
   # Create panel info dataset
   panel <- ninteraction(base)
   panel <- factor(panel, levels = seq_len(attr(panel, "n")))

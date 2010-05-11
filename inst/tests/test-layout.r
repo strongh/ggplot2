@@ -41,3 +41,8 @@ test_that("crossed rows/cols create no more combinations than necessary", {
   expect_that(layout_grid(list(b, c), "a", "b"),
     throws_error("one layer must contain all variables"))
 })
+
+test_that("margins add correct combinations", {
+  one <- layout_grid(list(a), "a", "b", margins = TRUE)
+  expect_that(nrow(one), equals(3 + 2 + 2 + 1))
+})
