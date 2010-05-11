@@ -53,40 +53,7 @@ FacetGrid <- proto(Facet, {
   }
 
   map_layer <- function(., data) {
-    # Compute facetting variables
-    all <- c(.$rows, .$cols)
-    facet_vals <- as.data.frame(compact(
-      eval.quoted(all, data, emptyenv(), try = TRUE)))
-
-    data <- add_margins(data, names(.$rows), names(.$cols), .$margins)
-          
-    # If any facetting variables are missing, add them in by 
-    # duplicating the data
-    missing_facets <- setdiff(names(all), names(facet_vals))
-    if (length(missing_facets) > 0) {
-      to_add <- unique(.$panel_info[missing_facets])
-      
-      data_rep <- rep.int(1:nrow(data), nrow(to_add))
-      facet_rep <- rep(1:nrow(to_add), each = nrow(data))
-
-      data <- data[data_rep, ]
-      facet_vals <- cbind(
-        facet_vals[data_rep, ,  drop = FALSE], 
-        to_add[facet_rep, , drop = FALSE])
-    }
-    
-    # Add PANEL variable
-    if (nrow(facet_vals) == 0) {
-      # Special case of no facetting
-      data$PANEL <- 1
-    } else {
-      facet_vals[] <- lapply(facet_vals[], as.factor)
-      keys <- join.keys(facet_vals, .$panel_info, by = names(all))
-
-      data$PANEL <- .$panel_info$PANEL[match(keys$x, keys$y)]      
-    }
-    
-    data
+    locate_grid(data, .$panel_info, .$rows, .$cols, .$margins)
   }
 
   # Create grobs for each component of the panel guides
