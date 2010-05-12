@@ -48,10 +48,10 @@ Facet <- proto(TopLevel, {
 
     # Initialise scales if needed and if available
     if (is.null(.$scales$x) && scales$has_scale("x")) {
-      .$scales$x <- scales_list(scales$get_scales("x"), length(x_scales))
+      .$scales$x <- rlply(length(x_scales), scales$get_scales("x")$clone())
     }
     if (is.null(.$scales$y) && scales$has_scale("y")) {
-      .$scales$y <- scales_list(scales$get_scales("y"), length(y_scales))
+      .$scales$y <- rlply(length(y_scales), scales$get_scales("y")$clone())
     }
 
     # For each layer of data
@@ -60,16 +60,15 @@ Facet <- proto(TopLevel, {
 
   position_train_layer <- function(., data) {
     scale_x <- .$panel_info$SCALE_X[match(data$PANEL, .$panel_info$PANEL)]
-    scale_y <- .$panel_info$SCALE_Y[match(data$PANEL, .$panel_info$PANEL)]
-
     l_ply(unique(scale_x), function(i) {
       raw <- data[scale_x == i, , ]
       .$scales$x[[i]]$train_df(raw, drop = .$free$x)
     })
 
+    scale_y <- .$panel_info$SCALE_Y[match(data$PANEL, .$panel_info$PANEL)]
     l_ply(unique(scale_y), function(i) {
       raw <- data[scale_y == i, , ]
-      .$scales$y[[i]]$train_df(raw, drop = .$free$x)
+      .$scales$y[[i]]$train_df(raw, drop = .$free$y)
     })
   }
 
@@ -79,14 +78,13 @@ Facet <- proto(TopLevel, {
 
   position_map_layer <- function(., data) {
     scale_x <- .$panel_info$SCALE_X[match(data$PANEL, .$panel_info$PANEL)]
-    scale_y <- .$panel_info$SCALE_Y[match(data$PANEL, .$panel_info$PANEL)]
-
     data <- ldply(unique(scale_x), function(i) {
       old <- data[scale_x == i, , ]
       new <- .$scales$x[[i]]$map_df(old)
       cunion(new, old)
     })
 
+    scale_y <- .$panel_info$SCALE_Y[match(data$PANEL, .$panel_info$PANEL)]
     data <- ldply(unique(scale_y), function(i) {
       old <- data[scale_y == i, , ]
       new <- .$scales$y[[i]]$map_df(old)

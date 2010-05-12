@@ -65,7 +65,6 @@ FacetGrid <- proto(Facet, {
     axes <- .$build_axes(coord, coord_details, theme)
     strips <- .$build_strips(coord_details, theme)
     panels <- .$build_panels(panels_grob, coord, coord_details, theme)
-    browser()
     # legend
     # labels
     
@@ -316,18 +315,3 @@ FacetGrid <- proto(Facet, {
   }
   
 })
-
-# List of scales
-# Make a list of scales, cloning if necessary
-# 
-# @arguments input scale
-# @arguments number of scales to produce in output
-# @arguments should the scales be free (TRUE) or fixed (FALSE)
-# @keywords internal
-scales_list <- function(scale, n, free = TRUE) {
-  if (free) {
-    rlply(n, scale$clone())  
-  } else {
-    rep(list(scale), n)  
-  }
-}
