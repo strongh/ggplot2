@@ -13,49 +13,19 @@ FacetWrap <- proto(Facet, {
     )
   }
   
-  # Data shape
-  initialise <- function(., data) {
-    # Compute facetting variables for all layers
-    vars <- ldply(data, function(df) {
-      as.data.frame(eval.quoted(.$facets, df))
-    })
+  train <- function(., data) { 
+    panels <- layout_wrap(data, vars, .$nrow, .$ncol, .$drop)
     
-    # Arrange 1d structure into a grid -------
-    if (is.null(.$ncol) && is.null(.$nrow)) {
-      rc <- grDevices::n2mfrow(n)
-      nrow <- rc[1]
-      ncol <- rc[2]
-    } else if (is.null(.$ncol)) {
-      nrow <- .$nrow
-      ncol <- ceiling(n / nrow)
-    } else if (is.null(.$nrow)) {
-      ncol <- .$ncol
-      nrow <- ceiling(n / ncol)
-    } else {
-      ncol <- .$ncol
-      nrow <- .$nrow
-    }
-    stopifnot(nrow * ncol >= n)
+    # Add scale identification
+    panels$SCALE_X <- if (.$free$x) seq_len(nrow(panels)) else 1
+    panels$SCALE_Y <- if (.$free$y) seq_len(nrow(panels)) else 1
     
-    
-    .$panel_info <- split_labels(vars, .$drop)
-    .$panel_info$PANEL <- factor(1:nrow(.$facet_levels))
-    
-    
+    .$panel_info <- panels
+    invisible(NULL)
   }
   
-  stamp_data <- function(., data) {
-    lapply(data, function(df) {
-      df <- data.frame(df, eval.quoted(.$facets, df))
-
-      df$.ORDER <- 1:nrow(df)
-      df <- merge(add_group(df), .$facet_levels, by = .$conditionals())
-      df <- df[df$.ORDER, ]
-
-      out <- as.list(dlply(df, .(PANEL), .drop = FALSE))
-      dim(out) <- c(1, nrow(.$facet_levels))
-      out
-    })
+  map_layer <- function(., data) {
+    locate_wrap(data, panel)
   }
   
   # Create grobs for each component of the panel guides

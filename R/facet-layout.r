@@ -1,4 +1,4 @@
-#' Layout facets in a grid
+#' Layout panels in a 2d grid.
 #' 
 #' @params data list of data frames, one for each layer
 #' @params rows variables that form the rows
@@ -12,30 +12,10 @@ layout_grid <- function(data, rows = NULL, cols = NULL, margins = NULL) {
   rows <- as.quoted(rows)
   cols <- as.quoted(cols)
   
-  # For each layer, compute the facet values
-  values <- compact(llply(data, quoted_df, vars = c(rows, cols)))
-
-  # Form the base data frame which contains all combinations of facetting
-  # variables that appear in the data
-  has_all <- unlist(llply(values, length)) == length(rows) + length(cols)
-  if (!any(has_all)) {
-    stop("At least one layer must contain all variables used for facetting")
-  }
-  base <- unique(ldply(values[has_all]))
-  
-  # Systematically add on missing combinations
-  for (value in values[!has_all]) {
-    if (empty(value)) next;
-    
-    old <- base[setdiff(names(base), names(value))]
-    new <- value[intersect(names(base), names(value))]
-    
-    base <- rbind(base, expand.grid.df(old, new))
-  }
+  base <- layout_base(data, c(rows, cols))
 
   # Add margins
   base <- add_margins(base, names(rows), names(cols), margins)
-  base[] <- lapply(base[], as.factor)
 
   # Create panel info dataset
   panel <- ninteraction(base)
@@ -50,54 +30,83 @@ layout_grid <- function(data, rows = NULL, cols = NULL, margins = NULL) {
   arrange(panels, PANEL)
 }
 
+#' Layout out panels in a 1d ribbon.
+#'
+#' @params drop should missing combinations be excluded from the plot?
+#' @keywords internal
+layout_wrap <- function(data, vars = NULL, nrow = NULL, ncol = NULL, drop = TRUE) {
+  vars <- as.quoted(vars)
+  if (length(vars) == 0) return(layout_null())
+
+  base <- layout_base(data, vars)
+
+  id <- ninteraction(base, drop = drop)
+  n <- attr(id, "n")
+  
+  dims <- wrap_dims(n, nrow, ncol)
+  
+  unrowname(data.frame(
+    PANEL = factor(id, levels = seq_len(n)),
+    ROW = (as.integer(id) - 1L) %/% dims[2] + 1L,
+    COL = (as.integer(id) - 1L) %% dims[2] + 1L,
+    base
+  ))
+}
+
 layout_null <- function(data) { 
    data.frame(PANEL = 1, ROW = 1, COL = 1)
 }
 
-#' Take single layer of data and combine it with panel information to split
-#' data into different panels.  Adds in extra data for missing facetting
-#' levels and for margins.
+#' Base layout function that generates all combinations of data needed for
+#' facetting
 #'
-#' @params data a data frame
-locate_grid <- function(data, panels, rows = NULL, cols = NULL, margins = FALSE) {
-  rows <- as.quoted(rows)
-  cols <- as.quoted(cols)
-  vars <- c(names(rows), names(cols))
-  
-  # Compute facetting values and add margins
-  data <- add_margins(data, names(rows), names(cols), margins)
-  facet_vals <- quoted_df(data, c(rows, cols))
-  
-  # If any facetting variables are missing, add them in by 
-  # duplicating the data
-  missing_facets <- setdiff(vars, names(facet_vals))
-  if (length(missing_facets) > 0) {
-    to_add <- unique(panels[missing_facets])
-    
-    data_rep <- rep.int(1:nrow(data), nrow(to_add))
-    facet_rep <- rep(1:nrow(to_add), each = nrow(data))
-    
-    data <- unrowname(data[data_rep, , drop = FALSE])
-    facet_vals <- unrowname(cbind(
-      facet_vals[data_rep, ,  drop = FALSE], 
-      to_add[facet_rep, , drop = FALSE]))
-  }
-  
-  # Add PANEL variable
-  if (nrow(facet_vals) == 0) {
-    # Special case of no facetting
-    data$PANEL <- 1
-  } else {
-    facet_vals[] <- lapply(facet_vals[], as.factor)
-    keys <- join.keys(facet_vals, panels, by = vars)
+#' @params data list of data frames (one for each layer)
+#' @keywords internal
+layout_base <- function(data, vars = NULL) {
+  if (length(vars) == 0) return(layout_null())
 
-    data$PANEL <- panels$PANEL[match(keys$x, keys$y)]
+  # For each layer, compute the facet values
+  values <- compact(llply(data, quoted_df, vars))
+
+  # Form the base data frame which contains all combinations of facetting
+  # variables that appear in the data
+  has_all <- unlist(llply(values, length)) == length(vars)
+  if (!any(has_all)) {
+    stop("At least one layer must contain all variables used for facetting")
   }
+  base <- unique(ldply(values[has_all]))
   
-  arrange(data, PANEL)
+  # Systematically add on missing combinations
+  for (value in values[!has_all]) {
+    if (empty(value)) next;
+    
+    old <- base[setdiff(names(base), names(value))]
+    new <- value[intersect(names(base), names(value))]
+    
+    base <- rbind(base, expand.grid.df(old, new))
+  }
+  base
 }
+
+
 
 quoted_df <- function(data, vars) {
   values <- eval.quoted(data, expr = vars, emptyenv(), try = TRUE)
   as.data.frame(compact(values))
+}
+
+# Arrange 1d structure into a grid
+wrap_dims <- function(n, nrow = NULL, ncol = NULL) {
+    if (is.null(ncol) && is.null(nrow)) {
+      rc <- grDevices::n2mfrow(n)
+      nrow <- rc[1]
+      ncol <- rc[2]
+    } else if (is.null(ncol)) {
+      ncol <- ceiling(n / nrow)
+    } else if (is.null(nrow)) {
+      nrow <- ceiling(n / ncol)
+    }
+    stopifnot(nrow * ncol >= n)
+    
+    c(nrow, ncol)
 }
