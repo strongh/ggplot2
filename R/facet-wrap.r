@@ -22,8 +22,9 @@ FacetWrap <- proto(Facet, {
     
     # Arrange 1d structure into a grid -------
     if (is.null(.$ncol) && is.null(.$nrow)) {
-      ncol <- ceiling(sqrt(n))
-      nrow <- ceiling(n / ncol)
+      rc <- grDevices::n2mfrow(n)
+      nrow <- rc[1]
+      ncol <- rc[2]
     } else if (is.null(.$ncol)) {
       nrow <- .$nrow
       ncol <- ceiling(n / nrow)
