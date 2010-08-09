@@ -69,10 +69,10 @@ FacetGrid <- proto(Facet, {
     # labels
     
     # Combine components into complete plot
-    centre <- (axes$l$clone())$cbind(panels)$cbind(strips$r)
     top <- (strips$t$clone())$
       add_cols(strips$r$widths)$
       add_cols(axes$l$widths, pos = 0)
+    centre <- (axes$l$clone())$cbind(panels)$cbind(strips$r)
     bottom <- (axes$b$clone())$
       add_cols(strips$r$widths)$
       add_cols(axes$l$widths, pos = 0)

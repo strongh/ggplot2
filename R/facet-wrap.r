@@ -14,7 +14,7 @@ FacetWrap <- proto(Facet, {
   }
   
   train <- function(., data) { 
-    panels <- layout_wrap(data, vars, .$nrow, .$ncol, .$drop)
+    panels <- layout_wrap(data, .$facets, .$nrow, .$ncol, .$drop)
     
     # Add scale identification
     panels$SCALE_X <- if (.$free$x) seq_len(nrow(panels)) else 1
@@ -25,11 +25,49 @@ FacetWrap <- proto(Facet, {
   }
   
   map_layer <- function(., data) {
-    locate_wrap(data, panel)
+    locate_wrap(data, .$panel_info, .$facets)
   }
   
   # Create grobs for each component of the panel guides
-  add_guides <- function(., data, panels_grob, coord, theme) {
+  add_guides <- function(., panels_grob, coord, theme) {
+    coord_details <- llply(.$panel_info$PANEL, function(i) {
+      coord$compute_ranges(.$panel_scales(i))
+    })
+
+    browser()
+    axes <- .$build_axes(coord, coord_details, theme)
+    strips <- .$build_strips(coord_details, theme)
+    panels <- .$build_panels(panels_grob, coord, coord_details, theme)
+
+    # Combine components into complete plot
+    
+    # Fixed scales:
+    # -      axes-t  -
+    # axes-l panels  axes-r
+    # -      axes-b  -
+
+    # Panel:
+    # strip-t 
+    # panels  
+
+
+    top <- (strips$t$clone())$
+      add_cols(strips$r$widths)$
+      add_cols(axes$l$widths, pos = 0)
+    centre <- (axes$l$clone())$cbind(panels)$cbind(strips$r)
+    bottom <- (axes$b$clone())$
+      add_cols(strips$r$widths)$
+      add_cols(axes$l$widths, pos = 0)
+      
+    complete <- centre$clone()$
+      rbind(top, pos = 0)$
+      rbind(bottom)
+    complete$respect <- panels$respect
+    complete$name <- "layout"
+    
+    complete
+
+  
 
     aspect_ratio <- theme$aspect.ratio
     

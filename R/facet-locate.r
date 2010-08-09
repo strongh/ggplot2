@@ -45,8 +45,9 @@ locate_grid <- function(data, panels, rows = NULL, cols = NULL, margins = FALSE)
 locate_wrap <- function(data, panels, vars) {
   facet_vals <- quoted_df(data, vars)
   facet_vals[] <- lapply(facet_vals[], as.factor)
-  keys <- join.keys(facet_vals, panels, by = vars)
-
+  
+  keys <- join.keys(facet_vals, panels, by = names(vars))
+  
   data$PANEL <- panels$PANEL[match(keys$x, keys$y)]
   data
 }

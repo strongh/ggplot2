@@ -88,8 +88,6 @@ layout_base <- function(data, vars = NULL) {
   base
 }
 
-
-
 quoted_df <- function(data, vars) {
   values <- eval.quoted(vars, data, emptyenv(), try = TRUE)
   as.data.frame(compact(values))
