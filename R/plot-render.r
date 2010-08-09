@@ -33,8 +33,7 @@ panelGrob <- function(plot, pieces = ggplot_build(plot)) {
 # @arguments plot
 # @arguments plot grob
 # @keyword hplot 
-ggplotGrob <- function(plot, drop = plot$options$drop, keep = plot$options$keep, ...) {
-  pieces <- ggplot_build(plot)
+ggplotGrob <- function(plot, pieces = ggplot_build(plot), drop = plot$options$drop, keep = plot$options$keep, ...) {
   
   panels <- panelGrob(plot, pieces)
   scales <- pieces$scales
