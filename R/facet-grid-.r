@@ -13,9 +13,9 @@ FacetGrid <- proto(Facet, {
       facets <- as.formula(facets)
     }
     if (is.formula(facets)) {
-      rows <- as.quoted.formula(facets[[2]])
+      rows <- as.quoted(facets[[2]])
       rows <- rows[!sapply(rows, identical, as.name("."))]
-      cols <- as.quoted.formula(facets[[3]])
+      cols <- as.quoted(facets[[3]])
       cols <- cols[!sapply(cols, identical, as.name("."))]
     }
     if (is.list(facets)) {

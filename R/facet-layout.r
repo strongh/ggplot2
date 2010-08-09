@@ -18,13 +18,13 @@ layout_grid <- function(data, rows = NULL, cols = NULL, margins = NULL) {
   base <- add_margins(base, names(rows), names(cols), margins)
 
   # Create panel info dataset
-  panel <- ninteraction(base)
+  panel <- id(base)
   panel <- factor(panel, levels = seq_len(attr(panel, "n")))
   
   panels <- cbind(
     PANEL = panel,
-    ROW = ninteraction(base[names(rows)]) %||% 1,
-    COL = ninteraction(base[names(cols)]) %||% 1,
+    ROW = id(base[names(rows)]) %||% 1,
+    COL = id(base[names(cols)]) %||% 1,
     base
   )
   arrange(panels, PANEL)
@@ -40,7 +40,7 @@ layout_wrap <- function(data, vars = NULL, nrow = NULL, ncol = NULL, drop = TRUE
 
   base <- layout_base(data, vars)
 
-  id <- ninteraction(base, drop = drop)
+  id <- id(base, drop = drop)
   n <- attr(id, "n")
   
   dims <- wrap_dims(n, nrow, ncol)
@@ -66,7 +66,7 @@ layout_base <- function(data, vars = NULL) {
   if (length(vars) == 0) return(layout_null())
 
   # For each layer, compute the facet values
-  values <- compact(llply(data, quoted_df, vars))
+  values <- compact(llply(data, quoted_df, vars = vars))
 
   # Form the base data frame which contains all combinations of facetting
   # variables that appear in the data
@@ -91,7 +91,7 @@ layout_base <- function(data, vars = NULL) {
 
 
 quoted_df <- function(data, vars) {
-  values <- eval.quoted(data, expr = vars, emptyenv(), try = TRUE)
+  values <- eval.quoted(vars, data, emptyenv(), try = TRUE)
   as.data.frame(compact(values))
 }
 

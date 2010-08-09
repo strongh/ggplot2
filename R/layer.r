@@ -225,7 +225,7 @@ Layer <- proto(expr = {
     
     # If ordering is set, modify group variable according to this order
     if (!is.null(data$order)) {
-      data$group <- ninteraction(list(data$group, data$order))
+      data$group <- id(list(data$group, data$order))
       data$order <- NULL
     }
     
