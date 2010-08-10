@@ -38,18 +38,13 @@ FacetWrap <- proto(Facet, {
     axes <- .$build_axes(coord, coord_details, theme)
     strips <- .$build_strips(coord_details, theme)
     panels <- .$build_panels(panels_grob, coord, coord_details, theme)
-
-    # Combine components into complete plot
     
-    # Fixed scales:
-    # -      axes-t  -
-    # axes-l panels  axes-r
-    # -      axes-b  -
-
-    # Panel:
-    # strip-t 
-    # panels  
-
+    # How to think about facet wrap:
+    #  * vector of panels
+    #  * every panel has strips (strip_pos) and axes (axis_pos)
+    #  * if scales fixed, most axes empty
+    #  * combine panels, strips and axes, then wrap into 2d
+    #  * finally: add title, labels and legend
 
     top <- (strips$t$clone())$
       add_cols(strips$r$widths)$

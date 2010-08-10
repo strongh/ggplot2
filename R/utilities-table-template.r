@@ -26,7 +26,7 @@ layout_row <- function(name, grobs, height = NULL, widths = NULL) {
   table
 }
 
-layout_matrix <- function(name, grobs, widths = NULL, heights = NULL) {  
+layout_matrix <- function(name, grobs, widths = NULL, heights = NULL, respect = FALSE) {  
   table <- TableLayout$clone()
   table$name <- name
 
@@ -34,6 +34,7 @@ layout_matrix <- function(name, grobs, widths = NULL, heights = NULL) {
   table$add_rows(heights)
   
   table$add_grob(grobs, t = c(row(grobs)), l = c(col(grobs)), clip = "off")
+  table$respect <- respect
   
   table
 }

@@ -41,15 +41,14 @@ FacetGrid <- proto(Facet, {
   # 
   # @param data a list of data frames (one for the plot and one for each
   #   layer)
-  train <- function(., data) { 
+  panel_info <- function(., data) { 
     panels <- layout_grid(data, .$rows, .$cols, .$margins)
 
     # Relax constraints, if necessary
     panels$SCALE_X <- if (.$free$x) panels$ROW else 1
     panels$SCALE_Y <- if (.$free$y) panels$COL else 1
     
-    .$panel_info <- panels
-    invisible(NULL)
+    panels
   }
 
   map_layer <- function(., data) {
