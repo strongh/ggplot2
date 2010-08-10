@@ -136,7 +136,7 @@ Layer <- proto(expr = {
     
     if (!is.null(.$subset)) {
       include <- data.frame(eval.quoted(.$subset, data, emptyenv()))
-      data <- data[rowSums(include) == ncol(include), ]
+      data <- data[rowSums(include, na.rm = TRUE) == ncol(include), ]
     }
     
     # Override grouping if set in layer. 
