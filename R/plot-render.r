@@ -214,14 +214,19 @@ surround_viewports <- function(position, widths, heights, legend_vp) {
 # @keyword internal 
 print.ggplot <- function(x, newpage = is.null(vp), vp = NULL, ...) {
   set_last_plot(x)
-  if (newpage) grid.newpage()
   
-  plot_grob <- ggplotGrob(x, ...)
+  built <- ggplot_build(x, ...)
+  theme <- plot_theme(plot)
+  
+  layout <- built$panels$render(built$data, x$layers, x$scales, theme)
+  grob <- layout$gTree()
+  
+  if (newpage) grid.newpage()
   if (is.null(vp)) {
-    grid.draw(plot_grob) 
+    grid.draw(grob) 
   } else {
     if (is.character(vp)) seekViewport(vp) else pushViewport(vp)
-    grid.draw(plot_grob) 
+    grid.draw(grob) 
     upViewport()
   }
 }

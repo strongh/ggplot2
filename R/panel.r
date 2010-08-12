@@ -6,14 +6,22 @@ Panels <- Object$clone()$do({
   self$clone <- function(scales, coord, facet) {
     self$facet <- facet
     self$coord <- coord
-    self$scales <- scales
+    self$scales <- list(x = scales$get_scales("x"), 
+      y = scales$get_scales("y"))
+      
+    self
   }
   
-  # Figure out how many panels are needed, and build up a table that matches
-  # data subsets to panel position and scales.
-  # @primary facet
-  self$train <- function(data) {
-    self$panel_info <- facet$panel_info(data)
+  # Learn size and arrangement of panels from data.
+  # 
+  #  * facet: figure out how many panels are needed, and build up a table that
+  #    matches data subsets to panel position and scales. 
+  # 
+  # @param data a list of data frames (one for each layer)  
+  # @param plot_data default plot data frame
+  self$train <- function(data, plot_data) {
+    data <- c(list(plot_data), data)
+    self$panel_info <- self$facet$panel_info(data)
 
     # Initialise as many scales as necessary
     nx <- max(self$panel_info$SCALE_X)
@@ -21,26 +29,33 @@ Panels <- Object$clone()$do({
 
     ny <- max(self$panel_info$SCALE_Y)
     self$y_scales <- rlply(ny, self$scales$y$clone())
+    
+    invisible(NULL)
   }
   
+  # Add missing variables to data
+  #
   # Data is mapped after training to ensure that all layers have extra
   # copies of data for margins and missing facetting variables, and 
   # has a PANEL variable that tells which panel it belongs to.
   # 
+  # All other panel functions work with this data.
+  # 
   # @param data a list of data frames (one for each layer)  
-  self$map <- function(data) {
+  # @param plot_data default plot data frame
+  self$map <- function(data, plot_data) {
     lapply(layer_data, function(data) {
       if (empty(data)) data <- plot_data
-      facet$map_layer(data, panel_info)
+      facet$map_layer(data, self$panel_info)
     })    
   }
   
   # Train scales with data.
   # 
-  # @param data list of data frames
+  # @param data a list of data frames (one for each layer)  
   self$train_scales <- function(data) { 
-    pos <- ldply(data, function(df) df[c("x", "y", self$facet_vars)])
-    pos <- join(pos, self$panel_info)
+    pos <- ldply(data, function(df) df[c("x", "y", "PANEL")])
+    pos <- join(pos, self$panel_info, by = "PANEL")
     
     d_ply(pos, "SCALE_X", function(df) {
       x <- df$SCALE_X[1]
@@ -50,19 +65,62 @@ Panels <- Object$clone()$do({
       y <- df$SCALE_Y[1]
       self$y_scales[[y]]$train(df$y)
     })
+    
+    invisible(NULL)
+  }
+  
+  # Map data with scales.
+  #
+  # This operation must be idempotent because it is applied twice: both before
+  # and after statistical transformation.
+  # 
+  # @param data a list of data frames (one for each layer)  
+  self$map_scales <- function(data) {
+    lapply(data, function(layer_data) {
+      panel <- match(layer_data$PANEL, .$panel_info$PANEL)
+      
+      scale_x <- .$panel_info$SCALE_X[panel]
+      layer_data <- ldply(unique(scale_x), function(i) {
+        old <- data[scale_x == i, , ]
+        new <- .$scales$x[[i]]$map_df(old)
+        cunion(new, old)
+      })
+      
+      scale_y <- .$panel_info$SCALE_Y[panel]
+      layer_data <- ldply(unique(scale_y), function(i) {
+        old <- data[scale_y == i, , ]
+        new <- .$scales$y[[i]]$map_df(old)
+        cunion(new, old)
+      })
+      
+      layer_data
+    })
+  }
+  
+  # Calculate statistics
+  # 
+  # @param layers list of layers
+  # @param data a list of data frames (one for each layer)  
+  self$calculate_stats <- function(data, layers) {
+    mlply(cbind(d = data, l = layers), function(d, l) {
+      ddply(d, "PANEL", function(panel_data) {
+        panel <- self$make_panel(panel_data$PANEL[1])
+        layer$calc_statistic(panel_data, panel)
+      })
+    })
   }
   
   # Render the plot, combining axes, contents, strips, legends and labels.
   #
   # @return a TableLayout
-  render <- function(layers, data, scales, theme) {
-    contents <- self$build_contents(layers, data, theme)
+  render <- function(data, layers, scales, theme) {
+    contents <- self$build_contents(data, layers, theme)
     axes <- self$build_axes(theme)
     strips <- self$build_strips(theme)
     labels <- self$build_labels(theme)
     legends <- self$build_legends(scales, theme)
     
-    
+    contents
   }
   
   # Build axes for each side.
@@ -84,7 +142,7 @@ Panels <- Object$clone()$do({
   #  * theme: colours etc.
   # 
   # @return a TableLayout
-  build_contents <- function(layers, data, theme) {
+  build_contents <- function(data, layers, theme) {
     panels <- self$panel_info$PANEL    
     ncol <- max(self$panel_info$COL)
     nrow <- max(self$panel_info$ROW)
@@ -108,7 +166,7 @@ Panels <- Object$clone()$do({
     panel <- self$make_panel(i)
     
     fg <- self$coord$guide_foreground(panel, theme)
-    contents <- mdply(cbind(l = layers, d = data), function(l, d) 
+    contents <- mlply(cbind(l = layers, d = data), function(l, d) 
       l$make_geom(d, panel))
     bg <- self$coord$guide_background(panel, theme)
 

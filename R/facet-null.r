@@ -4,12 +4,10 @@ FacetNull <- proto(Facet, {
   }
 
   # The null facetter has a single panel.
-  train <- function(., data) {     
-    .$panel_info <- data.frame(
+  panel_info <- function(., data) {     
+    data.frame(
       PANEL = 1, ROW = 1, COL = 1, 
       SCALE_X = 1, SCALE_Y = 1)
-    
-    invisible(NULL)
   }
 
   map_layer <- function(., data) {
