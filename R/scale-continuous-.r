@@ -90,6 +90,12 @@ ScaleContinuous <- proto(Scale, funEnvir = globalenv(), {
     
     f <- match.fun(get("formatter", .))
     l[numeric] <- f(unlist(l[numeric]))
+    # special case for dollar; the motivating case being dollar formatting on log scales    
+    if (get("formatter", .)=="dollar") {
+      dollar_expression = function(ex)
+        return(bquote("$"*.(ex)))
+      l = lapply(l, dollar_expression)
+    }
     l
   }
   
