@@ -94,7 +94,7 @@ ScaleContinuous <- proto(Scale, funEnvir = globalenv(), {
     if (get("formatter", .)=="dollar") {
       dollar_expression = function(ex)
         return(bquote("$"*.(ex)))
-      l = lapply(l, dollar_expression)
+      l[!numeric] = lapply(l[!numeric], dollar_expression)
     }
     l
   }
