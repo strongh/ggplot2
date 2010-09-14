@@ -3,8 +3,8 @@ ScaleAlphaContinuous <- proto(ScaleContinuous, expr={
   common <- NULL
   aliases <- "scale_alpha"
   
-  new <- function(., name=NULL, limits=NULL, breaks=NULL, labels=NULL, trans = NULL, to = c(0.1, 1), legend = TRUE) {
-    .super$new(., name=name, limits=limits, breaks=breaks, labels=labels, trans=trans, variable = "alpha", to = to, legend = legend)
+  new <- function(., name=NULL, limits=NULL, breaks=NULL, labels=NULL, trans = NULL, to = c(0.1, 1), legend = TRUE, formatter = "scientific") {
+    .super$new(., name=name, limits=limits, breaks=breaks, labels=labels, trans=trans, variable = "alpha", to = to, legend = legend, formatter = formatter)
   }
   
   map <- function(., values) {
