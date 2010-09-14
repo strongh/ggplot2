@@ -25,7 +25,8 @@ ScaleLog10 <-    proto(ScaleContinuous,
   tr_default = Trans$find("log10"),
   objname = "log10",
   doc=FALSE,
-  examples=function(.) {}
+  formatter = "scientific",
+  examples=function(.) {},
 )
 
 ScalePow10 <-    proto(ScaleContinuous,
