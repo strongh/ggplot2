@@ -70,8 +70,16 @@ ScaleContinuous <- proto(Scale, funEnvir = globalenv(), {
   output_set <- function(.) .$input_set()
   
   # By default, breaks are regularly spaced along the (transformed) domain
+  # When breaks is 'integer', take the integer breaks and use the int formatter 
   input_breaks <- function(.) {
-    nulldefault(.$breaks, .$.tr$input_breaks(.$input_set()))
+    if(is.character(.$breaks)){ # breaks also isn't NULL
+      if(.$breaks != 'integer')
+        stop("Break specification ", .$breaks, " not recognized.")
+      all_breaks = .$.tr$input_breaks(.$input_set()) # breaks from grid.pretty
+      all_breaks[floor(all_breaks)==all_breaks] # return subset of integers
+    } else {    
+      nulldefault(.$breaks, .$.tr$input_breaks(.$input_set()))
+    }
   }
   input_breaks_n <- function(.) .$input_breaks()
 
