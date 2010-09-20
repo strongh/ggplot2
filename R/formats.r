@@ -7,6 +7,15 @@ comma <- function(x, ...) {
   format(x, big.mark = ",", trim = TRUE, scientific = FALSE, ...)
 }
 
+# Integer formatter
+# Round to nearest integer, with commas separating thousands
+# 
+# @arguments numeric vector to format
+# @arguments other arguments passed on to \code{\link{format}}
+int <- function(x, ...) {
+  format(as.integer(round(x)), big.mark = ",", trim = TRUE, scientific = FALSE, ...)
+}
+
 # Currency formatter
 # Round to nearest cent and display dollar sign
 # 
